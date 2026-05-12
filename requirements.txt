@@ -1,0 +1,8 @@
+fastapi==0.95.2
+flask
+requests
+python-dotenv
+poe-api-wrapper
+supabase
+uvicorn
+gunicorn

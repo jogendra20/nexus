@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nexus
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: GEMINI_KEY
+        sync: false
+      - key: OPENROUTER_KEY
+        sync: false
+      - key: GROQ_KEY
+        sync: false
+      - key: DRONA_URL
+        sync: false
+      - key: DRONA_PASSWORD
+        sync: false
+      - key: POE_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
