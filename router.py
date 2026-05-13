@@ -1,5 +1,6 @@
-from config import TASK_KEYWORDS, TASK_ROUTES
+from orchestrator import Orchestrator
 from rate_limiter import LimiterManager
+from config import TASK_KEYWORDS, TASK_ROUTES
 from providers.gemini import GeminiProvider
 from providers.openrouter import OpenRouterProvider
 from providers.poe import PoeProvider
@@ -11,21 +12,21 @@ from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
 from providers.github_models import GitHubModelsProvider
 
-
 class Router:
     def __init__(self):
         self.limiter = LimiterManager()
+        self.orchestrator = Orchestrator(self.limiter)
         self.providers = {
-            "gemini":      GeminiProvider(),
-            "openrouter":  OpenRouterProvider(),
-            "poe":         PoeProvider(),
-            "perplexity":  PerplexityProvider(),
-            "drona":       DronaProvider(),
-            "groq":        GroqProvider(),
-            "nvidia":     NvidiaProvider(),
-            "cerebras":   CerebrasProvider(),
-            "mistral":    MistralProvider(),
-           "github_models": GitHubModelsProvider(),
+            "gemini":       GeminiProvider(),
+            "openrouter":   OpenRouterProvider(),
+            "poe":          PoeProvider(),
+            "perplexity":   PerplexityProvider(),
+            "drona":        DronaProvider(),
+            "groq":         GroqProvider(),
+            "nvidia":       NvidiaProvider(),
+            "cerebras":     CerebrasProvider(),
+            "mistral":      MistralProvider(),
+            "github_models": GitHubModelsProvider(),
         }
 
     def classify(self, prompt: str) -> str:
@@ -39,23 +40,23 @@ class Router:
         if not task:
             task = self.classify(prompt)
 
-        providers = TASK_ROUTES.get(task, TASK_ROUTES["default"])
+        candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
+        ranked = self.orchestrator.rank(candidates, task)
 
-        for provider in providers:
-            if not self.limiter.check(provider):
-                print(f"⚠️ {provider} rate limited — skipping")
-                continue
+        for entry in ranked:
+            provider = entry["provider"]
             try:
-                if provider in ("openrouter", "groq","nvidia","cerebras","mistral"):
+                if provider in ("openrouter", "groq", "nvidia", "cerebras", "mistral"):
                     response = self.providers[provider].ask(prompt, task)
                 else:
                     response = self.providers[provider].ask(prompt)
 
-                print(f"✅ {provider} responded")
+                print(f"✅ {provider} responded | scores: {entry}")
                 return {
                     "response": response,
                     "provider": provider,
-                    "task": task
+                    "task": task,
+                    "scores": entry,
                 }
             except Exception as e:
                 print(f"⚠️ {provider} failed: {e} — trying next")
