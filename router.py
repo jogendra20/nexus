@@ -6,6 +6,9 @@ from providers.poe import PoeProvider
 from providers.perplexity import PerplexityProvider
 from providers.drona import DronaProvider
 from providers.groq_provider import GroqProvider
+from providers.nvidia import NvidiaProvider
+from providers.cerebras import CerebrasProvider
+from providers.mistral import MistralProvider
 
 class Router:
     def __init__(self):
@@ -17,6 +20,9 @@ class Router:
             "perplexity":  PerplexityProvider(),
             "drona":       DronaProvider(),
             "groq":        GroqProvider(),
+            "nvidia":     NvidiaProvider(),
+            "cerebras":   CerebrasProvider(),
+            "mistral":    MistralProvider(),
         }
 
     def classify(self, prompt: str) -> str:
@@ -37,7 +43,7 @@ class Router:
                 print(f"⚠️ {provider} rate limited — skipping")
                 continue
             try:
-                if provider in ("openrouter", "groq"):
+                if provider in ("openrouter", "groq","nvidia","cerebras","mistral"):
                     response = self.providers[provider].ask(prompt, task)
                 else:
                     response = self.providers[provider].ask(prompt)
