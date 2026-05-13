@@ -9,6 +9,8 @@ from providers.groq_provider import GroqProvider
 from providers.nvidia import NvidiaProvider
 from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
+from providers.github_models import GitHubModelsProvider
+
 
 class Router:
     def __init__(self):
@@ -23,6 +25,7 @@ class Router:
             "nvidia":     NvidiaProvider(),
             "cerebras":   CerebrasProvider(),
             "mistral":    MistralProvider(),
+           "github_models": GitHubModelsProvider(),
         }
 
     def classify(self, prompt: str) -> str:

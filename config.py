@@ -16,15 +16,17 @@ POE_API_KEY = os.getenv("POE_API_KEY")
 NVIDIA_KEY = os.getenv("NVIDIA_KEY")
 CEREBRAS_KEY = os.getenv("CEREBRAS_KEY")
 MISTRAL_KEY  = os.getenv("MISTRAL_KEY")
+GITHUB_MODELS_KEY = os.getenv("GITHUB_MODELS_KEY")
+
 
 # Provider rate limits
 TASK_ROUTES = {
     "search":    ["drona", "gemini", "groq"],
     "coding":    ["mistral", "nvidia", "openrouter", "gemini", "groq"],
-    "reasoning": ["nvidia", "gemini", "openrouter", "groq"],
     "trading":   ["cerebras", "groq", "gemini", "nvidia"],
-    "premium":   ["nvidia", "gemini", "openrouter"],
-    "default":   ["cerebras", "gemini", "nvidia", "openrouter", "groq"],
+    "reasoning": ["nvidia", "github_models", "gemini", "openrouter", "groq"],
+    "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
+    "default":   ["cerebras", "gemini", "github_models", "nvidia", "openrouter", "groq"],
 } 
 
 LIMITS = {
@@ -39,6 +41,7 @@ LIMITS = {
     "mistral":     {"calls": 30,  "period": 60},
     "cerebras": {"calls": 30, "period": 60},
     "mistral":  {"calls": 30, "period": 60},
+    "github_models":{"calls": 15,"period":60}
 }
 
 # Keywords for auto classification
