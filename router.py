@@ -1,6 +1,7 @@
 from orchestrator import Orchestrator
 from rate_limiter import LimiterManager
 from config import TASK_KEYWORDS, TASK_ROUTES
+from logger import log_request
 from providers.gemini import GeminiProvider
 from providers.openrouter import OpenRouterProvider
 from providers.poe import PoeProvider
@@ -11,21 +12,22 @@ from providers.nvidia import NvidiaProvider
 from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
 from providers.github_models import GitHubModelsProvider
+import time
 
 class Router:
     def __init__(self):
         self.limiter = LimiterManager()
         self.orchestrator = Orchestrator(self.limiter)
         self.providers = {
-            "gemini":       GeminiProvider(),
-            "openrouter":   OpenRouterProvider(),
-            "poe":          PoeProvider(),
-            "perplexity":   PerplexityProvider(),
-            "drona":        DronaProvider(),
-            "groq":         GroqProvider(),
-            "nvidia":       NvidiaProvider(),
-            "cerebras":     CerebrasProvider(),
-            "mistral":      MistralProvider(),
+            "gemini":        GeminiProvider(),
+            "openrouter":    OpenRouterProvider(),
+            "poe":           PoeProvider(),
+            "perplexity":    PerplexityProvider(),
+            "drona":         DronaProvider(),
+            "groq":          GroqProvider(),
+            "nvidia":        NvidiaProvider(),
+            "cerebras":      CerebrasProvider(),
+            "mistral":       MistralProvider(),
             "github_models": GitHubModelsProvider(),
         }
 
@@ -37,6 +39,7 @@ class Router:
         return "default"
 
     def ask(self, prompt: str, task: str = None) -> dict:
+        start = time.time()
         if not task:
             task = self.classify(prompt)
 
@@ -51,6 +54,15 @@ class Router:
                 else:
                     response = self.providers[provider].ask(prompt)
 
+                elapsed = int((time.time() - start) * 1000)
+                log_request(
+                    prompt=prompt,
+                    task=task,
+                    provider=provider,
+                    scores=entry,
+                    success=True,
+                    response_time_ms=elapsed,
+                )
                 print(f"✅ {provider} responded | scores: {entry}")
                 return {
                     "response": response,
@@ -59,6 +71,13 @@ class Router:
                     "scores": entry,
                 }
             except Exception as e:
+                log_request(
+                    prompt=prompt,
+                    task=task,
+                    provider=provider,
+                    success=False,
+                    error=str(e),
+                )
                 print(f"⚠️ {provider} failed: {e} — trying next")
                 continue
 
