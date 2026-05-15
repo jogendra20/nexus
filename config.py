@@ -26,7 +26,7 @@ TASK_ROUTES = {
     "trading":   ["cerebras", "groq", "gemini", "nvidia"],
     "reasoning": ["nvidia", "github_models", "gemini", "openrouter", "groq"],
     "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
-    "default":   ["cerebras", "gemini", "github_models", "nvidia", "openrouter", "groq"],
+    "default":   ["cerebras", "gemini", "github_models", "nvidia", "huggingface", "openrouter", "groq"],
 } 
 
 LIMITS = {
@@ -41,7 +41,8 @@ LIMITS = {
     "mistral":     {"calls": 30,  "period": 60},
     "cerebras": {"calls": 30, "period": 60},
     "mistral":  {"calls": 30, "period": 60},
-    "github_models":{"calls": 15,"period":60}
+    "github_models":{"calls": 15,"period":60},
+   "huggingface":   {"calls": 10, "period": 60},
 }
 
 # Keywords for auto classification

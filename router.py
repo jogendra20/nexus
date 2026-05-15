@@ -12,6 +12,8 @@ from providers.nvidia import NvidiaProvider
 from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
 from providers.github_models import GitHubModelsProvider
+from providers.huggingface import HuggingFaceProvider
+from scorer import update_score
 import time
 
 class Router:
@@ -29,6 +31,7 @@ class Router:
             "cerebras":      CerebrasProvider(),
             "mistral":       MistralProvider(),
             "github_models": GitHubModelsProvider(),
+ 	    "huggingface":   HuggingFaceProvider(),
         }
 
     def classify(self, prompt: str) -> str:
@@ -55,6 +58,13 @@ class Router:
                     response = self.providers[provider].ask(prompt)
 
                 elapsed = int((time.time() - start) * 1000)
+                update_score(
+                    provider=provider,
+                    task=task,
+                    success=True,
+                    response_time_ms=elapsed,
+                    response_length=len(response),
+                )
                 log_request(
                     prompt=prompt,
                     task=task,
@@ -71,6 +81,11 @@ class Router:
                     "scores": entry,
                 }
             except Exception as e:
+                update_score(
+                    provider=provider,
+                    task=task,
+                    success=False,
+                )
                 log_request(
                     prompt=prompt,
                     task=task,
@@ -89,3 +104,17 @@ class Router:
 
     def status(self) -> dict:
         return self.limiter.status()
+
+    def generate_image(self, prompt: str) -> dict:
+        # Try HuggingFace FLUX first
+        try:
+            return self.providers["huggingface"].generate_image(prompt)
+        except Exception as e:
+            print(f"[Image] HF failed: {e} — falling back to Pollinations")
+        # Fallback to Pollinations
+        url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+        return {
+            "image_url": url,
+            "provider": "pollinations",
+            "model": "flux",
+        }

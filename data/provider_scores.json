@@ -1,0 +1,74 @@
+{
+  "github_models": {
+    "reasoning": 10,
+    "premium": 10,
+    "coding": 9,
+    "trading": 7,
+    "search": 5,
+    "default": 8
+  },
+  "nvidia": {
+    "reasoning": 9,
+    "premium": 9,
+    "coding": 8,
+    "trading": 7,
+    "search": 5,
+    "default": 7
+  },
+  "cerebras": {
+    "reasoning": 6,
+    "premium": 5,
+    "coding": 6,
+    "trading": 9.368,
+    "search": 4,
+    "default": 8
+  },
+  "gemini": {
+    "reasoning": 8,
+    "premium": 8,
+    "coding": 7,
+    "trading": 8,
+    "search": 8,
+    "default": 8
+  },
+  "groq": {
+    "reasoning": 6,
+    "premium": 5,
+    "coding": 6,
+    "trading": 8,
+    "search": 5,
+    "default": 7
+  },
+  "mistral": {
+    "reasoning": 6,
+    "premium": 6,
+    "coding": 10,
+    "trading": 5,
+    "search": 4,
+    "default": 6
+  },
+  "openrouter": {
+    "reasoning": 7,
+    "premium": 7,
+    "coding": 7,
+    "trading": 6,
+    "search": 5,
+    "default": 6
+  },
+  "huggingface": {
+    "reasoning": 7,
+    "premium": 6,
+    "coding": 7,
+    "trading": 5,
+    "search": 4,
+    "default": 6
+  },
+  "drona": {
+    "reasoning": 2,
+    "premium": 2,
+    "coding": 2,
+    "trading": 6,
+    "search": 10,
+    "default": 3
+  }
+}
