@@ -23,7 +23,10 @@ def ask():
 @app.route("/search", methods=["POST"])
 def search():
     data = request.json
-    result = router.ask(data["query"], task="search")
+    query       = data.get("query", "")
+    max_results = data.get("max_results", 5)
+    freshness   = data.get("freshness", "day")
+    result = router.providers["drona"].search(query, max_results, freshness)
     return jsonify(result)
 
 @app.route("/image", methods=["POST"])

@@ -6,7 +6,7 @@ from providers.gemini import GeminiProvider
 from providers.openrouter import OpenRouterProvider
 from providers.poe import PoeProvider
 from providers.perplexity import PerplexityProvider
-from providers.drona import DronaProvider
+from providers.search import SearchProvider
 from providers.groq_provider import GroqProvider
 from providers.nvidia import NvidiaProvider
 from providers.cerebras import CerebrasProvider
@@ -25,7 +25,7 @@ class Router:
             "openrouter":    OpenRouterProvider(),
             "poe":           PoeProvider(),
             "perplexity":    PerplexityProvider(),
-            "drona":         DronaProvider(),
+            "drona":         SearchProvider(),
             "groq":          GroqProvider(),
             "nvidia":        NvidiaProvider(),
             "cerebras":      CerebrasProvider(),
