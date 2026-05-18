@@ -58,7 +58,7 @@ class Router:
         AUTOMATION_CONTEXT = """You are generating Python automation code for this environment:
 - Runtime: GitHub Actions Ubuntu 22.04
 - Python: 3.11
-- Libraries: playwright, scrapling
+- Libraries available: playwright, scrapling, requests, beautifulsoup4, pandas, lxml
 - Chromium flags: --no-sandbox --disable-dev-shm-usage
 - Headless: True always
 - Output: ONLY use print() for results. Never write files.
