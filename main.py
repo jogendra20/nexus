@@ -59,6 +59,7 @@ def telegram_webhook():
 
 @app.route("/deploy", methods=["POST"])
 def deploy():
+    import threading
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
