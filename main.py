@@ -57,6 +57,61 @@ def telegram_webhook():
     return "ok"
 
 
+@app.route("/deploy", methods=["POST"])
+def deploy():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    prompt   = data.get("prompt", "")
+    filename = data.get("filename", None)
+    task     = data.get("task", "automation")
+
+    if not prompt:
+        return jsonify({"error": "prompt required"}), 400
+
+    # Step 1: Generate code via Nexus router
+    result = router.ask(prompt, task=task)
+    code   = result.get("response", "")
+    provider = result.get("provider", "unknown")
+
+    # Strip markdown fences if present
+    import re
+    code = re.sub(r"^```python
+|^```
+|```$", "", code, flags=re.MULTILINE).strip()
+
+    # Step 2: Push to GitHub
+    from github_pusher import push_script, trigger_workflow
+    push_result = push_script(code, filename)
+
+    if not push_result["success"]:
+        return jsonify({"error": "Push failed", "detail": push_result}), 500
+
+    # Step 3: Trigger workflow
+    trigger_result = trigger_workflow(push_result["filename"], prompt[:100])
+
+    # Step 4: Notify Telegram
+    import os, requests as req
+    token   = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if token and chat_id:
+        status = "✅ triggered" if trigger_result["success"] else "⚠️ push ok, trigger failed"
+        req.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": f"🤖 *Nexus Automation*\n\n`{push_result['filename']}`\nProvider: {provider}\nStatus: {status}\n\n[View file]({push_result['url']})",
+                "parse_mode": "Markdown"
+            }
+        )
+
+    return jsonify({
+        "code": code,
+        "provider": provider,
+        "file": push_result["filename"],
+        "triggered": trigger_result["success"]
+    })
+
 @app.route("/result", methods=["POST"])
 def result():
     if not auth_required():
