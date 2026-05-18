@@ -1,19 +1,50 @@
 """
-telegram_bot.py - NEXUS Telegram Interface
-Uses NEXUS itself to classify intent before routing.
+telegram_bot.py - NEXUS Multi-Agent Telegram Interface
+Simple questions → one agent, fast.
+Hard questions → multiple agents collaborate.
 """
 
 import os
+import re
 import requests
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID")
 BASE_URL  = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-def send_message(chat_id: str, text: str):
+AGENT_ICONS = {
+    "cerebras":      "⚡",
+    "groq":          "🚀",
+    "gemini":        "✨",
+    "nvidia":        "🧠",
+    "github_models": "🔮",
+    "mistral":       "💻",
+    "openrouter":    "🌐",
+    "huggingface":   "🤗",
+    "search":        "🔍",
+}
+
+AGENT_NAMES = {
+    "cerebras":      "Cerebras",
+    "groq":          "Groq",
+    "gemini":        "Gemini",
+    "nvidia":        "NVIDIA",
+    "github_models": "GPT",
+    "mistral":       "Mistral",
+    "openrouter":    "OpenRouter",
+    "huggingface":   "HuggingFace",
+    "search":        "Search",
+}
+
+# ── Telegram helpers ──────────────────────────────────────────────
+def send(chat_id: str, text: str):
     requests.post(
         f"{BASE_URL}/sendMessage",
-        json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
+        json={
+            "chat_id":    chat_id,
+            "text":       text,
+            "parse_mode": "Markdown",
+        },
         timeout=10,
     )
 
@@ -34,103 +65,240 @@ def send_photo(chat_id: str, image_b64: str = None, image_url: str = None, capti
             timeout=30,
         )
 
-def classify_intent(text: str, router) -> str:
-    """Use NEXUS to classify user intent."""
-    prompt = f"""Classify this message into exactly one intent. Reply with only the intent word.
+# ── Intent detection ──────────────────────────────────────────────
+def detect_intent(text: str) -> str:
+    t = text.lower()
 
-Intents:
-- image: user wants to generate, create, draw, or see an image/picture/photo
-- search: user wants news, current events, latest information, market data
-- status: user wants to check system status or provider quotas
-- chat: anything else — questions, conversation, analysis, coding, trading
+    # Image
+    if any(w in t for w in [
+        "draw ", "image of", "picture of", "photo of",
+        "generate image", "create image", "show me a picture",
+        "make an image", "paint ", "illustrate"
+    ]):
+        return "image"
 
-Message: "{text}"
+    # Search
+    if any(w in t for w in [
+        "latest news", "today news", "current news",
+        "what happened", "nifty today", "sensex today",
+        "market today", "breaking news", "recent news"
+    ]):
+        return "search"
 
-Reply with only: image, search, status, or chat"""
+    # Code
+    if any(w in t for w in [
+        "write code", "write a function", "write a script",
+        "code for", "implement ", "program to", "python code",
+        "javascript code", "debug this", "fix this code",
+        "def ", "function ", "class "
+    ]):
+        return "code"
 
-    result = router.ask(prompt, task="reasoning")
-    intent = result.get("response", "chat").strip().lower()
-
-    # Normalize
-    if "image" in intent:   return "image"
-    if "search" in intent:  return "search"
-    if "status" in intent:  return "status"
     return "chat"
 
+# ── Complexity detection ──────────────────────────────────────────
+def is_complex(text: str) -> bool:
+    t = text.lower()
+    word_count = len(text.split())
+
+    # Simple signals
+    simple_starters = [
+        "what is", "what are", "who is", "when is",
+        "define ", "meaning of", "full form of",
+        "how much", "how many", "what does",
+    ]
+    if any(t.startswith(s) for s in simple_starters) and word_count < 8:
+        return False
+
+    # Complex signals
+    complex_signals = [
+        "explain", "analyze", "compare", "difference between",
+        "how does", "why does", "deep dive", "in detail",
+        "comprehensive", "thorough", "elaborate", "breakdown",
+        "strategy", "framework", "architecture", "design",
+        "pros and cons", "advantages", "disadvantages",
+        "step by step", "how to build", "how to implement",
+    ]
+    if any(s in t for s in complex_signals):
+        return True
+
+    # Long questions are complex
+    if word_count > 15:
+        return True
+
+    return False
+
+# ── Format response text ──────────────────────────────────────────
+def format_response(text: str) -> str:
+    # Convert markdown headers to bold
+    text = re.sub(r'^#{1,3}\s+(.+)$', r'*\1*', text, flags=re.MULTILINE)
+
+    # Keep code blocks
+    text = re.sub(r'```(\w+)?\n', r'```\n', text)
+
+    # Convert **bold** to *bold* (Telegram uses single *)
+    text = re.sub(r'\*\*(.+?)\*\*', r'*\1*', text)
+
+    # Clean excessive newlines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    return text.strip()
+
+# ── Agent message header ──────────────────────────────────────────
+def agent_header(provider: str) -> str:
+    icon = AGENT_ICONS.get(provider, "🤖")
+    name = AGENT_NAMES.get(provider, provider.title())
+    return f"{icon} *{name}*"
+
+# ── Single agent response ─────────────────────────────────────────
+def single_agent(text: str, chat_id: str, router, task: str = "default"):
+    result   = router.ask(text, task=task)
+    response = result.get("response", "No response")
+    provider = result.get("provider", "unknown")
+
+    formatted = format_response(response)
+    if len(formatted) > 3800:
+        formatted = formatted[:3800] + "\n\n_[truncated]_"
+
+    send(chat_id, f"{agent_header(provider)}\n\n{formatted}")
+
+# ── Multi agent response ──────────────────────────────────────────
+def multi_agent(text: str, chat_id: str, router):
+    send(chat_id, "🤝 *Agents collaborating...*")
+
+    # Agent 1 — fast reasoning (cerebras/groq)
+    result1   = router.ask(text, task="trading" if "trading" in text.lower() else "reasoning")
+    response1 = result1.get("response", "")
+    provider1 = result1.get("provider", "unknown")
+
+    if response1:
+        formatted1 = format_response(response1)
+        if len(formatted1) > 1800:
+            formatted1 = formatted1[:1800] + "..."
+        send(chat_id, f"{agent_header(provider1)}\n\n{formatted1}")
+
+    # Agent 2 — deeper model (nvidia/github_models)
+    result2   = router.ask(
+        f"Add important insights or corrections to this analysis of '{text}':\n\n{response1[:500]}",
+        task="premium"
+    )
+    response2 = result2.get("response", "")
+    provider2 = result2.get("provider", "unknown")
+
+    if response2 and provider2 != provider1:
+        formatted2 = format_response(response2)
+        if len(formatted2) > 1800:
+            formatted2 = formatted2[:1800] + "..."
+        send(chat_id, f"{agent_header(provider2)}\n\n{formatted2}")
+
+    # Synthesis — conclusion
+    synthesis_prompt = f"""Based on these two analyses about '{text}':
+
+Agent 1: {response1[:400]}
+Agent 2: {response2[:400]}
+
+Give a clear, concise final conclusion in 3-5 bullet points."""
+
+    result3   = router.ask(synthesis_prompt, task="reasoning")
+    response3 = result3.get("response", "")
+    provider3 = result3.get("provider", "unknown")
+
+    if response3:
+        formatted3 = format_response(response3)
+        send(chat_id,
+            f"━━━━━━━━━━━━━━━━\n"
+            f"🎯 *Conclusion*\n"
+            f"━━━━━━━━━━━━━━━━\n\n"
+            f"{formatted3}"
+        )
+
+# ── Code response ─────────────────────────────────────────────────
+def code_agent(text: str, chat_id: str, router):
+    result   = router.ask(text, task="coding")
+    response = result.get("response", "")
+    provider = result.get("provider", "unknown")
+
+    formatted = format_response(response)
+    if len(formatted) > 3800:
+        formatted = formatted[:3800] + "\n\n_[truncated]_"
+
+    send(chat_id, f"{agent_header(provider)}\n\n{formatted}")
+
+# ── Main message processor ────────────────────────────────────────
 def process_message(text: str, chat_id: str):
     text = text.strip()
 
     # Hard commands
-    if text.startswith("/start"):
-        send_message(chat_id,
-            "👋 *NEXUS Bot Online*\n\n"
-            "Just talk naturally:\n"
-            "• Ask anything → AI answers\n"
-            "• Ask for an image → generates one\n"
-            "• Ask for news → searches live\n"
-            "• `/status` → provider quotas\n\n"
-            "_Powered by NEXUS — 8 AI providers_"
+    if text == "/start":
+        send(chat_id,
+            "👋 *NEXUS Online*\n\n"
+            "I route your questions to the best AI agents.\n\n"
+            "Simple question → ⚡ instant answer\n"
+            "Hard question → 🤝 multiple agents\n"
+            "Code request → 💻 code blocks\n"
+            "Image request → 🎨 generated image\n"
+            "News request → 🔍 live search\n\n"
+            "Just talk naturally."
         )
         return
 
-    if text.startswith("/status"):
+    if text == "/status":
         from router import Router
         r = Router()
         status = r.status()
-        lines = ["📊 *NEXUS Provider Status*\n"]
+        lines = ["📊 *Provider Status*\n"]
         for provider, remaining in status.items():
             filled = min(int(remaining / 10), 10)
-            bar = "█" * filled + "░" * (10 - filled)
-            lines.append(f"`{provider:15}` {bar} {remaining}")
-        send_message(chat_id, "\n".join(lines))
+            bar    = "█" * filled + "░" * (10 - filled)
+            icon   = AGENT_ICONS.get(provider, "🤖")
+            lines.append(f"{icon} `{provider:14}` {bar} {remaining}")
+        send(chat_id, "\n".join(lines))
         return
 
-    # Load router once
     from router import Router
     router = Router()
 
-    # Quick local pre-filter first
-    text_lower = text.lower()
-    if any(w in text_lower for w in ["draw", "picture", "photo", "image of", "generate", "create a", "show me a"]):
-        intent = "image"
-    elif any(w in text_lower for w in ["news", "latest", "today", "current", "market", "nifty", "sensex"]):
-        intent = "search"
-    else:
-        intent = classify_intent(text, router)
+    intent = detect_intent(text)
 
     if intent == "image":
-        send_message(chat_id, "🎨 Generating image...")
+        send(chat_id, "🎨 *Generating image...*")
         result = router.generate_image(text)
         if "image_b64" in result:
-            send_photo(chat_id, image_b64=result["image_b64"], caption=f"_{text[:100]}_")
+            send_photo(chat_id, image_b64=result["image_b64"], caption=text[:100])
         elif "image_url" in result:
-            send_photo(chat_id, image_url=result["image_url"], caption=f"_{text[:100]}_")
+            send_photo(chat_id, image_url=result["image_url"], caption=text[:100])
         return
 
     if intent == "search":
+        send(chat_id, "🔍 *Searching live...*")
         from providers.search import SearchProvider
-        sp = SearchProvider()
-        data = sp.search(text, max_results=3, freshness="day")
+        sp      = SearchProvider()
+        data    = sp.search(text, max_results=4, freshness="day")
         results = data.get("results", [])
         if not results:
-            send_message(chat_id, "No results found.")
+            send(chat_id, "No results found.")
             return
-        lines = [f"🔍 *Search Results*\n"]
-        for r in results[:3]:
-            lines.append(f"• [{r['title']}]({r['url']})\n  _{r.get('source','')}_ — {r.get('snippet','')[:80]}...")
-        send_message(chat_id, "\n".join(lines))
+        lines = ["🔍 *Live Results*\n"]
+        for r in results[:4]:
+            title   = r.get("title", "")[:60]
+            url     = r.get("url", "")
+            source  = r.get("source", "")
+            snippet = r.get("snippet", "")[:80]
+            lines.append(f"• [{title}]({url})\n  _{source}_ — {snippet}...")
+        send(chat_id, "\n".join(lines))
         return
 
-    # Default — chat
-    result = router.ask(text)
-    response = result.get("response", "No response")
-    provider = result.get("provider", "unknown")
+    if intent == "code":
+        code_agent(text, chat_id, router)
+        return
 
-    if len(response) > 3800:
-        response = response[:3800] + "...\n\n_[truncated]_"
+    # Chat — check complexity
+    if is_complex(text):
+        multi_agent(text, chat_id, router)
+    else:
+        single_agent(text, chat_id, router)
 
-    send_message(chat_id, f"{response}\n\n_via {provider}_")
-
+# ── Webhook handler ───────────────────────────────────────────────
 def handle_update(update: dict):
     message = update.get("message", {})
     text    = message.get("text", "")
@@ -140,10 +308,10 @@ def handle_update(update: dict):
         return
 
     if CHAT_ID and chat_id != CHAT_ID:
-        send_message(chat_id, "⛔ Unauthorized.")
+        send(chat_id, "⛔ Unauthorized.")
         return
 
     try:
         process_message(text, chat_id)
     except Exception as e:
-        send_message(chat_id, f"❌ Error: {str(e)[:200]}")
+        send(chat_id, f"❌ Error: `{str(e)[:200]}`")
