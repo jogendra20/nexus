@@ -4,10 +4,10 @@ from config import GEMINI_KEY
 
 class GeminiProvider:
     MODELS = [
-        "gemini-2.5-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-    ]
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash",
+]
 
     def ask(self, prompt: str) -> str:
         for model in self.MODELS:

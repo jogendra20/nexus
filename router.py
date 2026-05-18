@@ -16,6 +16,8 @@ from providers.huggingface import HuggingFaceProvider
 from scorer import update_score
 import time
 
+IMAGE_KEYWORDS = ["generate image", "create image", "draw", "make image", "imagine"]
+
 class Router:
     def __init__(self):
         self.limiter = LimiterManager()
@@ -25,13 +27,13 @@ class Router:
             "openrouter":    OpenRouterProvider(),
             "poe":           PoeProvider(),
             "perplexity":    PerplexityProvider(),
-            "drona":         SearchProvider(),
+            "search":        SearchProvider(),
             "groq":          GroqProvider(),
             "nvidia":        NvidiaProvider(),
             "cerebras":      CerebrasProvider(),
             "mistral":       MistralProvider(),
             "github_models": GitHubModelsProvider(),
- 	    "huggingface":   HuggingFaceProvider(),
+            "huggingface":   HuggingFaceProvider(),
         }
 
     def classify(self, prompt: str) -> str:
@@ -42,6 +44,10 @@ class Router:
         return "default"
 
     def ask(self, prompt: str, task: str = None) -> dict:
+        # Detect image requests
+        if any(kw in prompt.lower() for kw in IMAGE_KEYWORDS):
+            return self.generate_image(prompt)
+
         start = time.time()
         if not task:
             task = self.classify(prompt)
@@ -106,15 +112,34 @@ class Router:
         return self.limiter.status()
 
     def generate_image(self, prompt: str) -> dict:
-        # Try HuggingFace FLUX first
+        import requests as req, base64, os
+        token   = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
         try:
-            return self.providers["huggingface"].generate_image(prompt)
+            result = self.providers["huggingface"].generate_image(prompt)
         except Exception as e:
             print(f"[Image] HF failed: {e} — falling back to Pollinations")
-        # Fallback to Pollinations
-        url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
-        return {
-            "image_url": url,
-            "provider": "pollinations",
-            "model": "flux",
-        }
+            url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
+            result = {"image_url": url, "provider": "pollinations", "model": "flux"}
+
+        # Send to Telegram
+        if token and chat_id:
+            try:
+                if "image_b64" in result:
+                    img_bytes = base64.b64decode(result["image_b64"])
+                    req.post(
+                        f"https://api.telegram.org/bot{token}/sendPhoto",
+                        data={"chat_id": chat_id},
+                        files={"photo": ("image.jpg", img_bytes, "image/jpeg")}
+                    )
+                elif "image_url" in result:
+                    req.post(
+                        f"https://api.telegram.org/bot{token}/sendPhoto",
+                        data={"chat_id": chat_id, "photo": result["image_url"]}
+                    )
+                print("[Image] Sent to Telegram")
+            except Exception as e:
+                print(f"[Image] Telegram send failed: {e}")
+
+        return result

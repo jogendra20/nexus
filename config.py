@@ -19,12 +19,11 @@ MISTRAL_KEY  = os.getenv("MISTRAL_KEY")
 GITHUB_MODELS_KEY = os.getenv("GITHUB_MODELS_KEY")
 
 
-# Provider rate limits
 TASK_ROUTES = {
-    "search":    ["drona", "gemini", "groq"],
-    "coding":    ["mistral", "nvidia", "openrouter", "gemini", "groq"],
+    "search":    ["search", "gemini", "groq"],
+    "coding":    ["github_models", "nvidia", "mistral", "openrouter", "gemini"],
     "trading":   ["cerebras", "groq", "gemini", "nvidia"],
-    "reasoning": ["nvidia", "github_models", "gemini", "openrouter", "groq"],
+    "reasoning": ["github_models", "nvidia", "gemini", "openrouter", "groq"],
     "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
     "default":   ["cerebras", "gemini", "github_models", "nvidia", "huggingface", "openrouter", "groq"],
 } 
@@ -34,7 +33,7 @@ LIMITS = {
     "openrouter":  {"calls": 20,  "period": 60},
     "poe":         {"calls": 10,  "period": 86400},
     "perplexity":  {"calls": 4,   "period": 86400},
-    "drona":       {"calls": 100, "period": 86400},  # your own service
+    "search":       {"calls": 100, "period": 86400},  # your own service
     "groq":        {"calls": 30,  "period": 60},
     "nvidia":      {"calls": 40, "period": 60},
     "cerebras":    {"calls": 30,  "period": 60},

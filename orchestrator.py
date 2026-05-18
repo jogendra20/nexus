@@ -10,7 +10,7 @@ from scorer import get_score
     "groq":          {"reasoning": 6,  "premium": 5,  "coding": 6, "trading": 8, "search": 5, "default": 7},
     "mistral":       {"reasoning": 6,  "premium": 6,  "coding": 10,"trading": 5, "search": 4, "default": 6},
     "openrouter":    {"reasoning": 7,  "premium": 7,  "coding": 7, "trading": 6, "search": 5, "default": 6},
-    "drona":         {"reasoning": 2,  "premium": 2,  "coding": 2, "trading": 6, "search": 10,"default": 3},
+    "search":         {"reasoning": 2,  "premium": 2,  "coding": 2, "trading": 6, "search": 10,"default": 3},
     "huggingface":   {"reasoning": 7,  "premium": 6,  "coding": 7, "trading": 5, "search": 4, "default": 6},
 }'''
 
