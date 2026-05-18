@@ -61,7 +61,7 @@ class Router:
 - Libraries: playwright, scrapling
 - Chromium flags: --no-sandbox --disable-dev-shm-usage
 - Headless: True always
-- Output: print results or write to output.json
+- Output: ONLY use print() for results. Never write files.
 - No hardcoded secrets; use os.getenv()
 Write complete, runnable code only. No explanations unless asked."""
 
