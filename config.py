@@ -25,7 +25,7 @@ TASK_ROUTES = {
     "trading":   ["cerebras", "groq", "gemini", "nvidia"],
     "reasoning": ["github_models", "nvidia", "gemini", "openrouter", "groq"],
     "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
-    "automation": ["github_models", "nvidia", "mistral", "gemini", "openrouter"],
+    "automation": ["mistral", "openrouter", "github_models", "groq", "cerebras"],
     "default":   ["cerebras", "gemini", "github_models", "nvidia", "huggingface", "openrouter", "groq"],
 } 
 

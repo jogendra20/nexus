@@ -74,6 +74,9 @@ def deploy():
     code   = result.get("response", "")
     provider = result.get("provider", "unknown")
 
+    if not code or code.strip() == "" or "All providers exhausted" in code:
+        return jsonify({"error": "Code generation failed", "provider": provider}), 503
+
     # Strip markdown fences if present
     import re
     code = re.sub(r"^```(?:python)?\n?|```$", "", code, flags=re.MULTILINE).strip()
