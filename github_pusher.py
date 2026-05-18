@@ -47,6 +47,20 @@ def push_script(code: str, filename: str = None) -> dict:
     else:
         return {"success": False, "error": response.json()}
 
+def delete_file(filepath: str) -> dict:
+    check = requests.get(f"{BASE_URL}/contents/{filepath}", headers=HEADERS)
+    if check.status_code != 200:
+        return {"success": False, "error": "File not found"}
+    sha = check.json().get("sha")
+    response = requests.delete(
+        f"{BASE_URL}/contents/{filepath}",
+        headers=HEADERS,
+        json={"message": f"cleanup: {filepath}", "sha": sha, "branch": BRANCH}
+    )
+    if response.status_code == 200:
+        return {"success": True}
+    return {"success": False, "error": response.text}
+
 def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy") -> dict:
     payload = {
         "ref": BRANCH,

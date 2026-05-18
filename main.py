@@ -115,6 +115,18 @@ def deploy():
         "triggered": trigger_result["success"]
     })
 
+@app.route("/delete-script", methods=["POST"])
+def delete_script():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    filepath = data.get("filepath")
+    if not filepath:
+        return jsonify({"error": "filepath required"}), 400
+    from github_pusher import delete_file
+    result = delete_file(filepath)
+    return jsonify(result)
+
 @app.route("/result", methods=["POST"])
 def result():
     if not auth_required():
