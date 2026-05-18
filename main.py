@@ -57,5 +57,30 @@ def telegram_webhook():
     return "ok"
 
 
+@app.route("/result", methods=["POST"])
+def result():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    # data: {provider, task, success, response_time_ms, error}
+    from scorer import update_score
+    from logger import log_request
+    update_score(
+        provider=data.get("provider", "unknown"),
+        task=data.get("task", "automation"),
+        success=data.get("success", False),
+        response_time_ms=data.get("response_time_ms", 0),
+    )
+    if not data.get("success") and data.get("error"):
+        import os, requests as req
+        token = os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        if token and chat_id:
+            req.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": f"❌ Automation failed\n`{data.get('error','')[:300]}`", "parse_mode": "Markdown"}
+            )
+    return jsonify({"status": "scored"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8001, debug=True)

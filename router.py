@@ -55,13 +55,24 @@ class Router:
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
         ranked = self.orchestrator.rank(candidates, task)
 
+        AUTOMATION_CONTEXT = """You are generating Python automation code for this environment:
+- Runtime: GitHub Actions Ubuntu 22.04
+- Python: 3.11
+- Libraries: playwright, scrapling
+- Chromium flags: --no-sandbox --disable-dev-shm-usage
+- Headless: True always
+- Output: print results or write to output.json
+- No hardcoded secrets; use os.getenv()
+Write complete, runnable code only. No explanations unless asked."""
+
         for entry in ranked:
             provider = entry["provider"]
             try:
+                actual_prompt = f"{AUTOMATION_CONTEXT}\n\nTask: {prompt}" if task == "automation" else prompt
                 if provider in ("openrouter", "groq", "nvidia", "cerebras", "mistral"):
-                    response = self.providers[provider].ask(prompt, task)
+                    response = self.providers[provider].ask(actual_prompt, task)
                 else:
-                    response = self.providers[provider].ask(prompt)
+                    response = self.providers[provider].ask(actual_prompt)
 
                 elapsed = int((time.time() - start) * 1000)
                 update_score(
