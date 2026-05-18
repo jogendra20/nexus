@@ -89,9 +89,14 @@ def process_message(text: str, chat_id: str):
     from router import Router
     router = Router()
 
-    # Classify intent via NEXUS
-    send_message(chat_id, "⏳ Processing...")
-    intent = classify_intent(text, router)
+    # Quick local pre-filter first
+    text_lower = text.lower()
+    if any(w in text_lower for w in ["draw", "picture", "photo", "image of", "generate", "create a", "show me a"]):
+        intent = "image"
+    elif any(w in text_lower for w in ["news", "latest", "today", "current", "market", "nifty", "sensex"]):
+        intent = "search"
+    else:
+        intent = classify_intent(text, router)
 
     if intent == "image":
         send_message(chat_id, "🎨 Generating image...")
