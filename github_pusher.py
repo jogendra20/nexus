@@ -47,12 +47,13 @@ def push_script(code: str, filename: str = None) -> dict:
     else:
         return {"success": False, "error": response.json()}
 
-def trigger_workflow(script_path: str, task: str = "") -> dict:
+def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy") -> dict:
     payload = {
         "ref": BRANCH,
         "inputs": {
             "script_path": script_path,
-            "task": task
+            "task": task,
+            "difficulty": difficulty
         }
     }
     response = requests.post(
@@ -63,4 +64,4 @@ def trigger_workflow(script_path: str, task: str = "") -> dict:
     if response.status_code == 204:
         return {"success": True}
     else:
-        return {"success": False, "error": response.text}
+        return {"success": False, "error": response.text, "status_code": response.status_code}

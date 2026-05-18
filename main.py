@@ -64,8 +64,9 @@ def deploy():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
     prompt   = data.get("prompt", "")
-    filename = data.get("filename", None)
-    task     = data.get("task", "automation")
+    filename   = data.get("filename", None)
+    task       = data.get("task", "automation")
+    difficulty = data.get("difficulty", "easy")
 
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
