@@ -76,9 +76,7 @@ def deploy():
 
     # Strip markdown fences if present
     import re
-    code = re.sub(r"^```python
-|^```
-|```$", "", code, flags=re.MULTILINE).strip()
+    code = re.sub(r"^```(?:python)?\n?|```$", "", code, flags=re.MULTILINE).strip()
 
     # Step 2: Push to GitHub
     from github_pusher import push_script, trigger_workflow
