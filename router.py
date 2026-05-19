@@ -55,24 +55,18 @@ class Router:
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
         ranked = self.orchestrator.rank(candidates, task)
 
-        AUTOMATION_CONTEXT = """You are a careful automation engineer. Before writing code:
-1. Think: Is this site likely to block scrapers? Does it need special headers/cookies?
-2. Think: What is the simplest reliable approach?
-3. Then write clean, tested-looking code.
+        AUTOMATION_CONTEXT = """You are a Python automation engineer. Output ONLY raw Python code. No explanations, no comments about what the code does, no markdown, no prose before or after.
 
-Environment:
-- Runtime: GitHub Actions Ubuntu 22.04
-- Python: 3.11
-- Libraries available: playwright, scrapling, requests, beautifulsoup4, pandas, lxml
-- Chromium flags: --no-sandbox --disable-dev-shm-usage
-- Headless: True always
-- Output: ONLY use print() for results. Never write files.
-- NSE India scraping: NEVER use playwright directly on nseindia.com pages. Use NSE's JSON API instead:
-  1. First GET https://www.nseindia.com with headers to get cookies
-  2. Then GET https://www.nseindia.com/api/live-analysis-variations?index=gainers
-  Use requests library with headers: User-Agent, Accept, Referer. Never use playwright for NSE.
-- No hardcoded secrets; use os.getenv()
-Write complete, runnable code only. No explanations unless asked."""
+Rules:
+- Runtime: GitHub Actions Ubuntu 22.04, Python 3.11
+- Available: playwright, requests, beautifulsoup4, pandas, lxml
+- Playwright: always use --no-sandbox --disable-dev-shm-usage, headless=True
+- Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
+- Output: use print() for text results, save files for binary results
+- NSE India: never use playwright on nseindia.com. Use requests + NSE JSON API with cookies
+- No hardcoded secrets: use os.getenv()
+
+CRITICAL: Your entire response must be valid Python. No prose. No explanations. Code only."""
 
         for entry in ranked:
             provider = entry["provider"]
