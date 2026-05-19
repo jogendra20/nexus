@@ -104,9 +104,17 @@ def deploy():
     if not code or code.strip() == "" or "All providers exhausted" in code:
         return jsonify({"error": "Code generation failed", "provider": provider}), 503
 
-    # Strip markdown fences if present
+    # Strip markdown fences and trailing prose
     import re
     code = re.sub(r"^```(?:python)?\n?|```$", "", code, flags=re.MULTILINE).strip()
+    # Remove any lines after the last Python line (trailing explanations)
+    lines = code.splitlines()
+    last_code_line = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and any(c in stripped for c in ["(", ")", "=", ":", "import", "from", "print", "for", "if", "with", "def", "class", "return", "try", "except"]):
+            last_code_line = i
+    code = "\n".join(lines[:last_code_line + 1]).strip()
 
     # Step 2: Push to GitHub
     from github_pusher import push_script, trigger_workflow
