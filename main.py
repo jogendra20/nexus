@@ -46,7 +46,7 @@ def ask():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    result = router.ask(data["prompt"], data.get("task"))
+    result = router.ask(data["prompt"], data.get("task"), data.get("difficulty", "easy"))
     return jsonify(result)
 
 @app.route("/search", methods=["POST"])
@@ -97,7 +97,7 @@ def deploy():
         return jsonify({"error": "prompt required"}), 400
 
     # Step 1: Generate code via Nexus router
-    result = router.ask(prompt, task=task)
+    result = router.ask(prompt, task=task, difficulty=difficulty)
     code   = result.get("response", "")
     provider = result.get("provider", "unknown")
 

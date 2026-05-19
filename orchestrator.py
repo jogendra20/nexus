@@ -38,24 +38,40 @@ class Orchestrator:
         max_calls = limits.get(provider, 10)
         return min(remaining / max_calls, 1.0) * 10  # normalize to 0-10
 
-    def rank(self, providers: list, task: str) -> list:
+    FAST_PROVIDERS    = {"groq", "cerebras"}
+    QUALITY_PROVIDERS = {"github_models", "gemini", "nvidia"}
+
+    def difficulty_multiplier(self, provider: str, difficulty: str) -> float:
+        if difficulty == "easy" and provider in self.FAST_PROVIDERS:
+            return 1.5
+        if difficulty == "hard" and provider in self.QUALITY_PROVIDERS:
+            return 1.5
+        if difficulty == "medium":
+            return 1.0
+        return 1.0
+
+    def rank(self, providers: list, task: str, difficulty: str = "easy") -> list:
+        # Image tasks always go to huggingface
+        if task == "image":
+            return [{"provider": "huggingface", "quality": 10, "availability": 10, "final": 10}]
+
         scores = []
         for provider in providers:
-            # Skip if rate limited
             if not self.limiter.check(provider):
                 continue
 
             quality = get_score(provider, task)
             availability = self.availability_score(provider)
-            final = (quality * QUALITY_WEIGHT) + (availability * AVAILABILITY_WEIGHT)
+            base = (quality * QUALITY_WEIGHT) + (availability * AVAILABILITY_WEIGHT)
+            final = base * self.difficulty_multiplier(provider, difficulty)
 
             scores.append({
                 "provider": provider,
                 "quality":  quality,
                 "availability": round(availability, 2),
                 "final":    round(final, 2),
+                "difficulty": difficulty,
             })
 
-        # Sort by final score descending
         scores.sort(key=lambda x: x["final"], reverse=True)
         return scores

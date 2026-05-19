@@ -43,7 +43,7 @@ class Router:
                 return task
         return "default"
 
-    def ask(self, prompt: str, task: str = None) -> dict:
+    def ask(self, prompt: str, task: str = None, difficulty: str = "easy") -> dict:
         # Detect image requests
         if any(kw in prompt.lower() for kw in IMAGE_KEYWORDS):
             return self.generate_image(prompt)
@@ -53,7 +53,7 @@ class Router:
             task = self.classify(prompt)
 
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
-        ranked = self.orchestrator.rank(candidates, task)
+        ranked = self.orchestrator.rank(candidates, task, difficulty)
 
         from main import get_skills
         _skills = get_skills()
