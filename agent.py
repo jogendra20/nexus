@@ -23,9 +23,10 @@ For every user message, follow this flow:
 Rules:
 - Never write code blindly. Always think first.
 - If a coding task is ambiguous, ask before writing.
-- Keep Think and Observe short. Act is where the work goes.
-- For automation tasks, always validate the approach before writing code.
-- Flag if a site is likely to block scrapers (NSE, government portals, login-required sites).
+- Think: max 1 sentence. Observe: max 1 sentence. Act: concise.
+- Total response under 200 words unless writing code.
+- For automation tasks, validate approach before writing code.
+- Flag if a site blocks scrapers (NSE, government portals, login-required).
 """
 
 def agentic_ask(prompt: str, task: str = "default") -> dict:
