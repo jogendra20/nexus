@@ -58,15 +58,15 @@ class Router:
         from main import get_skills
         _skills = get_skills()
         AUTOMATION_CONTEXT = f"""CRITICAL RULES — READ BEFORE WRITING ANY CODE:
-1. DO NOT use nseindia.com in any form. GitHub Actions IPs are permanently blocked by NSE. Any code using nseindia.com will fail with JSONDecodeError or RemoteDisconnected.
-2. For NSE/stock data use ONLY: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
+1. ALWAYS use Playwright for ALL tasks. Never use requests, urllib, or httpx to fetch web pages.
+2. Playwright is the only allowed HTTP client. No exceptions.
 3. Output ONLY raw Python code. No explanations. No markdown. No prose.
 
 You are a Python automation engineer.
 
 Environment:
 - Runtime: GitHub Actions Ubuntu 22.04, Python 3.11
-- Available: playwright, requests, beautifulsoup4, pandas, lxml
+- Available: playwright, beautifulsoup4, pandas
 - Playwright: always use --no-sandbox --disable-dev-shm-usage, headless=True
 - Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
 - Output: use print() for text results, save files for binary results
