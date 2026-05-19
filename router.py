@@ -65,7 +65,7 @@ Rules:
 - Playwright: always use --no-sandbox --disable-dev-shm-usage, headless=True
 - Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
 - Output: use print() for text results, save files for binary results
-- NSE India: never use playwright on nseindia.com. Use requests + NSE JSON API with cookies
+- NSE India: NEVER use nseindia.com API — GitHub Actions IPs are blocked, you will get empty data or RemoteDisconnected. Use Tickertape API instead: https://api.tickertape.in/stocks/screener/filter with params sortBy=change_percent&sortOrder=desc&limit=10
 - No hardcoded secrets: use os.getenv()
 
 ## REFERENCE SKILLS (use these exact patterns):
