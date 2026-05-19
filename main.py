@@ -229,7 +229,7 @@ def fix():
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
 
-    fix_prompt = f"""A Python automation script failed. Analyze the error and write a fixed version.
+    fix_prompt = f"""A Python automation script failed. You must write a complete fixed version.
 
 Original task: {prompt}
 
@@ -239,7 +239,12 @@ Failed code:
 Error output:
 {error[:1000]}
 
-Write a complete fixed Python script. Output ONLY raw Python code. No explanations."""
+Rules:
+- Analyze why the code failed from the error output
+- Write a complete working replacement script
+- If the error is JSONDecodeError or RemoteDisconnected on nseindia.com, switch to Tickertape API: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
+- Output ONLY raw Python code. Not the word "Fixed". Not an explanation. A complete runnable Python script.
+- The script must print actual results"""
 
     result = router.ask(fix_prompt, task="automation")
     fixed_code = result.get("response", "")
