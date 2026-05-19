@@ -41,7 +41,7 @@ def agentic_ask(prompt: str, task: str = "default") -> dict:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 1500,
+        "max_tokens": 400,
         "temperature": 0.7
     }
     
