@@ -285,5 +285,12 @@ Rules:
         "triggered": trigger_result["success"]
     })
 
+@app.route("/reload-skills", methods=["POST"])
+def reload_skills():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    _load_skills()
+    return jsonify({"status": "reloaded", "chars": len(_skills_cache["content"])})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
