@@ -8,6 +8,31 @@ import base64
 app = Flask(__name__)
 router = Router()
 
+import threading, time as _time
+_skills_cache = {"content": "", "loaded_at": 0}
+_SKILLS_TTL = 21600
+
+def _load_skills():
+    import requests as _req
+    try:
+        res = _req.get(
+            "https://raw.githubusercontent.com/jogendra20/Automate/main/skills/playwright.md",
+            timeout=10
+        )
+        if res.status_code == 200:
+            _skills_cache["content"] = res.text
+            _skills_cache["loaded_at"] = _time.time()
+            print(f"[Skills] Loaded {len(res.text)} chars")
+    except Exception as e:
+        print(f"[Skills] Load failed: {e}")
+
+def get_skills() -> str:
+    if _time.time() - _skills_cache["loaded_at"] > _SKILLS_TTL:
+        threading.Thread(target=_load_skills, daemon=True).start()
+    return _skills_cache["content"]
+
+_load_skills()
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok"})

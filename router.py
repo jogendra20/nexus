@@ -55,7 +55,9 @@ class Router:
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
         ranked = self.orchestrator.rank(candidates, task)
 
-        AUTOMATION_CONTEXT = """You are a Python automation engineer. Output ONLY raw Python code. No explanations, no comments about what the code does, no markdown, no prose before or after.
+        from main import get_skills
+        _skills = get_skills()
+        AUTOMATION_CONTEXT = f"""You are a Python automation engineer. Output ONLY raw Python code. No explanations, no markdown, no prose before or after.
 
 Rules:
 - Runtime: GitHub Actions Ubuntu 22.04, Python 3.11
@@ -65,6 +67,9 @@ Rules:
 - Output: use print() for text results, save files for binary results
 - NSE India: never use playwright on nseindia.com. Use requests + NSE JSON API with cookies
 - No hardcoded secrets: use os.getenv()
+
+## REFERENCE SKILLS (use these exact patterns):
+{_skills}
 
 CRITICAL: Your entire response must be valid Python. No prose. No explanations. Code only."""
 
