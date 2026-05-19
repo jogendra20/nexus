@@ -69,7 +69,7 @@ Environment:
 - Output: ONLY use print() for results. Never write files.
 - NSE India scraping: NEVER use playwright directly on nseindia.com pages. Use NSE's JSON API instead:
   1. First GET https://www.nseindia.com with headers to get cookies
-  2. Then GET https://www.nseindia.com/api/live-analysis-variations\?index\=gainers
+  2. Then GET https://www.nseindia.com/api/live-analysis-variations?index=gainers
   Use requests library with headers: User-Agent, Accept, Referer. Never use playwright for NSE.
 - No hardcoded secrets; use os.getenv()
 Write complete, runnable code only. No explanations unless asked."""

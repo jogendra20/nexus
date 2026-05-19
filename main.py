@@ -152,5 +152,45 @@ def result():
             )
     return jsonify({"status": "scored"})
 
+@app.route("/enhance", methods=["POST"])
+def enhance():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    prompt = data.get("prompt", "").strip().lower()
+    if not prompt:
+        return jsonify({"error": "prompt required"}), 400
+
+    import re
+
+    # Extract URL if present
+    url_match = re.search(r"(https?://\S+|www\.\S+|\S+\.(com|in|org|net|ac\.in|edu|gov)\S*)", prompt)
+    url = url_match.group(0) if url_match else None
+    if url and not url.startswith("http"):
+        url = "https://" + url
+
+    # Detect intent
+    screenshot_kw = ["screenshot", "photo", "picture", "capture", "look", "see", "show"]
+    scrape_kw     = ["scrape", "extract", "get data", "fetch", "list", "gainers", "losers", "price", "news"]
+    fill_kw       = ["fill", "login", "form", "submit", "register"]
+    monitor_kw    = ["monitor", "watch", "check every", "alert"]
+
+    if any(k in prompt for k in screenshot_kw):
+        action = f"go to {url or 'the website'}, wait 30 seconds, save a screenshot as screenshot.png"
+    elif any(k in prompt for k in fill_kw):
+        action = f"go to {url or 'the website'}, fill the form and submit, print confirmation"
+    elif any(k in prompt for k in monitor_kw):
+        action = f"go to {url or 'the website'}, monitor for changes every 60 seconds, print any updates"
+    elif any(k in prompt for k in scrape_kw):
+        action = f"scrape {url or 'the target page'}, extract the relevant data, print as a clean list"
+    elif url:
+        action = f"go to {url}, wait for full page load, save a screenshot as screenshot.png"
+    else:
+        # Can't enhance without enough signal — pass through as-is
+        return jsonify({"enhanced": None})
+
+    enhanced = action
+    return jsonify({"enhanced": enhanced, "provider": "local"})
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8001, debug=True)
+    app.run(host="0.0.0.0", port=8003, debug=True)
