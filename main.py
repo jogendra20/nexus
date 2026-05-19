@@ -217,5 +217,68 @@ def enhance():
     enhanced = action
     return jsonify({"enhanced": enhanced, "provider": "local"})
 
+@app.route("/fix", methods=["POST"])
+def fix():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    prompt = data.get("prompt", "")
+    error = data.get("error", "")
+    code = data.get("code", "")
+
+    if not prompt:
+        return jsonify({"error": "prompt required"}), 400
+
+    fix_prompt = f"""A Python automation script failed. Analyze the error and write a fixed version.
+
+Original task: {prompt}
+
+Failed code:
+{code[:2000]}
+
+Error output:
+{error[:1000]}
+
+Write a complete fixed Python script. Output ONLY raw Python code. No explanations."""
+
+    result = router.ask(fix_prompt, task="automation")
+    fixed_code = result.get("response", "")
+    provider = result.get("provider", "unknown")
+
+    if not fixed_code or "All providers exhausted" in fixed_code:
+        return jsonify({"error": "Fix generation failed"}), 503
+
+    import re
+    fixed_code = re.sub(r"^```(?:python)?\n?|```$", "", fixed_code, flags=re.MULTILINE).strip()
+
+    from github_pusher import push_script, trigger_workflow
+    push_result = push_script(fixed_code, None)
+
+    if not push_result["success"]:
+        return jsonify({"error": "Push failed", "detail": push_result}), 500
+
+    trigger_result = trigger_workflow(push_result["filename"], f"[RETRY] {prompt[:80]}")
+
+    import os, requests as req
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if token and chat_id:
+        status = "✅ retry triggered" if trigger_result["success"] else "⚠️ fix generated, trigger failed"
+        req.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": f"🔧 *Nexus Auto-Fix*\n\nProvider: {provider}\nStatus: {status}\n\n[View fixed script]({push_result['url']})",
+                "parse_mode": "Markdown"
+            }
+        )
+
+    return jsonify({
+        "fixed": True,
+        "provider": provider,
+        "file": push_result["filename"],
+        "triggered": trigger_result["success"]
+    })
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
