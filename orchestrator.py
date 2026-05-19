@@ -55,6 +55,12 @@ class Orchestrator:
         if task == "image":
             return [{"provider": "huggingface", "quality": 10, "availability": 10, "final": 10}]
 
+        # Automation hard/medium always use github_models first
+        if task == "automation" and difficulty in ("medium", "hard"):
+            if self.limiter.check("github_models"):
+                rest = [p for p in providers if p != "github_models"]
+                return [{"provider": "github_models", "quality": 10, "availability": 10, "final": 10}] + self.rank(rest, task, difficulty)
+
         scores = []
         for provider in providers:
             if not self.limiter.check(provider):
