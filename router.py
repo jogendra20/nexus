@@ -55,7 +55,12 @@ class Router:
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
         ranked = self.orchestrator.rank(candidates, task)
 
-        AUTOMATION_CONTEXT = """You are generating Python automation code for this environment:
+        AUTOMATION_CONTEXT = """You are a careful automation engineer. Before writing code:
+1. Think: Is this site likely to block scrapers? Does it need special headers/cookies?
+2. Think: What is the simplest reliable approach?
+3. Then write clean, tested-looking code.
+
+Environment:
 - Runtime: GitHub Actions Ubuntu 22.04
 - Python: 3.11
 - Libraries available: playwright, scrapling, requests, beautifulsoup4, pandas, lxml
