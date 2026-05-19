@@ -57,15 +57,19 @@ class Router:
 
         from main import get_skills
         _skills = get_skills()
-        AUTOMATION_CONTEXT = f"""You are a Python automation engineer. Output ONLY raw Python code. No explanations, no markdown, no prose before or after.
+        AUTOMATION_CONTEXT = f"""CRITICAL RULES — READ BEFORE WRITING ANY CODE:
+1. DO NOT use nseindia.com in any form. GitHub Actions IPs are permanently blocked by NSE. Any code using nseindia.com will fail with JSONDecodeError or RemoteDisconnected.
+2. For NSE/stock data use ONLY: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
+3. Output ONLY raw Python code. No explanations. No markdown. No prose.
 
-Rules:
+You are a Python automation engineer.
+
+Environment:
 - Runtime: GitHub Actions Ubuntu 22.04, Python 3.11
 - Available: playwright, requests, beautifulsoup4, pandas, lxml
 - Playwright: always use --no-sandbox --disable-dev-shm-usage, headless=True
 - Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
 - Output: use print() for text results, save files for binary results
-- NSE India: NEVER use nseindia.com API — GitHub Actions IPs are blocked, you will get empty data or RemoteDisconnected. Use Tickertape API instead: https://api.tickertape.in/stocks/screener/filter with params sortBy=change_percent&sortOrder=desc&limit=10
 - No hardcoded secrets: use os.getenv()
 
 ## REFERENCE SKILLS (use these exact patterns):
