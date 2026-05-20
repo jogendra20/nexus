@@ -141,11 +141,13 @@ def deploy():
             }
         )
 
+    run_id = trigger_result.get("run_id") or push_result["filename"].replace("scripts/","").replace(".py","")
     return jsonify({
         "code": code,
         "provider": provider,
         "file": push_result["filename"],
-        "triggered": trigger_result["success"]
+        "triggered": trigger_result["success"],
+        "run_id": run_id,
     })
 
 @app.route("/delete-script", methods=["POST"])
