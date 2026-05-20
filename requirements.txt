@@ -6,3 +6,4 @@ poe-api-wrapper
 supabase
 uvicorn
 gunicorn
+supabase
