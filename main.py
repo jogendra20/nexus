@@ -160,6 +160,36 @@ def delete_script():
     result = delete_file(filepath)
     return jsonify(result)
 
+
+@app.route("/output", methods=["POST"])
+def output():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    run_id = data.get("run_id", "")
+    # Read from stored outputs
+    import os
+    output_file = f"data/outputs/{run_id}.json"
+    if os.path.exists(output_file):
+        with open(output_file) as f:
+            return jsonify(json.load(f))
+    return jsonify({"status": "pending", "output": None})
+
+@app.route("/store-output", methods=["POST"])
+def store_output():
+    """Called by send_output.py to store run results."""
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    run_id = data.get("run_id", "")
+    if not run_id:
+        return jsonify({"error": "run_id required"}), 400
+    import os
+    os.makedirs("data/outputs", exist_ok=True)
+    with open(f"data/outputs/{run_id}.json", "w") as f:
+        json.dump(data, f)
+    return jsonify({"stored": True})
+
 @app.route("/result", methods=["POST"])
 def result():
     if not auth_required():
