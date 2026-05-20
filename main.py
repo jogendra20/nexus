@@ -166,29 +166,72 @@ def output():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    run_id = data.get("run_id", "")
-    # Read from stored outputs
-    import os
-    output_file = f"data/outputs/{run_id}.json"
-    if os.path.exists(output_file):
-        with open(output_file) as f:
-            return jsonify(json.load(f))
+    run_id = str(data.get("run_id", ""))
+    import urllib.request as _ur, json as _json
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
+    url = f"{sb_url}/rest/v1/run_outputs?run_id=eq.{run_id}&select=*"
+    req = _ur.Request(url, headers={
+        "apikey": sb_key,
+        "Authorization": f"Bearer {sb_key}"
+    })
+    try:
+        res = _ur.urlopen(req, timeout=5)
+        rows = _json.loads(res.read())
+        if rows:
+            return jsonify(rows[0])
+    except Exception as e:
+        print(f"[Output] Supabase error: {e}")
     return jsonify({"status": "pending", "output": None})
 
 @app.route("/store-output", methods=["POST"])
 def store_output():
-    """Called by send_output.py to store run results."""
+    """Called by send_output.py to store run results in Supabase."""
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    run_id = data.get("run_id", "")
+    run_id = str(data.get("run_id", ""))
     if not run_id:
         return jsonify({"error": "run_id required"}), 400
-    import os
-    os.makedirs("data/outputs", exist_ok=True)
-    with open(f"data/outputs/{run_id}.json", "w") as f:
-        json.dump(data, f)
-    return jsonify({"stored": True})
+    import urllib.request as _ur, json as _json
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
+    payload = _json.dumps({
+        "run_id": run_id,
+        "status": data.get("status", "done"),
+        "output": data.get("output", ""),
+        "image_b64": data.get("image_b64"),
+        "task": data.get("task", ""),
+        "exit_code": data.get("exit_code", 0)
+    }).encode()
+    req = _ur.Request(
+        f"{sb_url}/rest/v1/run_outputs",
+        data=payload,
+        headers={
+            "apikey": sb_key,
+            "Authorization": f"Bearer {sb_key}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+        },
+        method="POST"
+    )
+    try:
+        _ur.urlopen(req, timeout=10)
+        return jsonify({"stored": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/classify", methods=["POST"])
+def classify_intent():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    prompt = data.get("prompt", "")
+    if not prompt:
+        return jsonify({"error": "prompt required"}), 400
+    from intent import classify
+    intent = classify(prompt)
+    return jsonify({"intent": intent})
 
 @app.route("/result", methods=["POST"])
 def result():
