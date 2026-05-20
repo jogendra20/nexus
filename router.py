@@ -52,6 +52,22 @@ class Router:
         if not task:
             task = self.classify(prompt)
 
+        # Route search intent directly to SearchProvider
+        if task == "search":
+            try:
+                result = self.providers["search"].search(prompt, max_results=5)
+                # Then summarize with fast LLM
+                summary_prompt = f"Summarize these search results about: {prompt}\n\nResults: {result.get('results','No results')}\n\nGive a clear, concise answer. No markdown."
+                summary = self.providers["groq"].ask(summary_prompt, "default")
+                return {
+                    "response": summary.get("response", result.get("results", "No results found")),
+                    "provider": "drona+groq",
+                    "task": "search",
+                    "sources": result.get("results", ""),
+                }
+            except Exception as e:
+                print(f"[Search] failed: {e} — falling back to LLM")
+
         candidates = TASK_ROUTES.get(task, TASK_ROUTES["default"])
         ranked = self.orchestrator.rank(candidates, task, difficulty)
 
