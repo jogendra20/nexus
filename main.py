@@ -221,7 +221,14 @@ def store_output():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route("/classify", methods=["POST"])
+
+@app.route("/ticker", methods=["GET"])
+def ticker():
+    from ticker import get_ticker
+    items = get_ticker()
+    return jsonify({"items": items})
+
+@app.route("/ticker", methods=["POST"])
 def classify_intent():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
