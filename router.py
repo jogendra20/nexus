@@ -135,34 +135,12 @@ CRITICAL: Your entire response must be valid Python. No prose. No explanations. 
         return self.limiter.status()
 
     def generate_image(self, prompt: str) -> dict:
-        import requests as req, base64, os
-        token   = os.getenv("TELEGRAM_BOT_TOKEN")
-        chat_id = os.getenv("TELEGRAM_CHAT_ID")
-
         try:
             result = self.providers["huggingface"].generate_image(prompt)
+            result["provider"] = "huggingface"
+            return result
         except Exception as e:
             print(f"[Image] HF failed: {e} — falling back to Pollinations")
-            url = f"https://image.pollinations.ai/prompt/{prompt.replace(' ', '%20')}"
-            result = {"image_url": url, "provider": "pollinations", "model": "flux"}
-
-        # Send to Telegram
-        if token and chat_id:
-            try:
-                if "image_b64" in result:
-                    img_bytes = base64.b64decode(result["image_b64"])
-                    req.post(
-                        f"https://api.telegram.org/bot{token}/sendPhoto",
-                        data={"chat_id": chat_id},
-                        files={"photo": ("image.jpg", img_bytes, "image/jpeg")}
-                    )
-                elif "image_url" in result:
-                    req.post(
-                        f"https://api.telegram.org/bot{token}/sendPhoto",
-                        data={"chat_id": chat_id, "photo": result["image_url"]}
-                    )
-                print("[Image] Sent to Telegram")
-            except Exception as e:
-                print(f"[Image] Telegram send failed: {e}")
-
-        return result
+            import urllib.parse
+            url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(prompt)}"
+            return {"image_url": url, "provider": "pollinations", "model": "flux"}
