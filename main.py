@@ -124,7 +124,7 @@ def deploy():
         return jsonify({"error": "Push failed", "detail": push_result}), 500
 
     # Step 3: Trigger workflow
-    trigger_result = trigger_workflow(push_result["filename"], prompt[:100])
+    trigger_result = trigger_workflow(push_result["filename"], prompt[:100], difficulty, provider)
 
     # Step 4: Notify Telegram
     import os, requests as req
@@ -270,7 +270,7 @@ Rules:
     if not push_result["success"]:
         return jsonify({"error": "Push failed", "detail": push_result}), 500
 
-    trigger_result = trigger_workflow(push_result["filename"], f"[RETRY] {prompt[:80]}")
+    trigger_result = trigger_workflow(push_result["filename"], f"[RETRY] {prompt[:80]}", "medium", provider)
 
     import os, requests as req
     token = os.getenv("TELEGRAM_BOT_TOKEN")

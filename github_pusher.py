@@ -20,7 +20,6 @@ def push_script(code: str, filename: str = None) -> dict:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"scripts/auto_{ts}.py"
 
-    # Check if file exists (need SHA for update)
     sha = None
     check = requests.get(f"{BASE_URL}/contents/{filename}", headers=HEADERS)
     if check.status_code == 200:
@@ -61,13 +60,14 @@ def delete_file(filepath: str) -> dict:
         return {"success": True}
     return {"success": False, "error": response.text}
 
-def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy") -> dict:
+def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy", provider: str = "unknown") -> dict:
     payload = {
         "ref": BRANCH,
         "inputs": {
             "script_path": script_path,
             "task": task,
-            "difficulty": difficulty
+            "difficulty": difficulty,
+            "provider": provider
         }
     }
     response = requests.post(
