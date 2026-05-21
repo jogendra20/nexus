@@ -84,7 +84,9 @@ Environment:
 - Runtime: GitHub Actions Ubuntu 22.04, Python 3.11
 - Available: playwright, beautifulsoup4, pandas
 - Playwright: always use --no-sandbox --disable-dev-shm-usage, headless=True
+- NEVER set PLAYWRIGHT_EXECUTABLE_PATH — it breaks the runner. Remove it if you think you need it.
 - Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
+- After screenshot, always print("screenshot saved") so output.txt is not empty
 - Output: use print() for text results, save files for binary results
 - No hardcoded secrets: use os.getenv()
 
