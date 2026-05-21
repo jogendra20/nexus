@@ -87,6 +87,8 @@ Environment:
 - NEVER set PLAYWRIGHT_EXECUTABLE_PATH — it breaks the runner. Remove it if you think you need it.
 - Screenshots: always save as screenshot.png using page.screenshot(path="screenshot.png")
 - After screenshot, always print("screenshot saved") so output.txt is not empty
+- For goto: always use wait_until="domcontentloaded" timeout=30000, never "networkidle"
+- Always wrap goto in try/except, take screenshot even if page errors, never let the script crash without a screenshot
 - Output: use print() for text results, save files for binary results
 - No hardcoded secrets: use os.getenv()
 
