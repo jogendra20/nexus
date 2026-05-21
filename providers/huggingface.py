@@ -53,6 +53,11 @@ class HuggingFaceProvider:
                     timeout=120,
                 )
                 r.raise_for_status()
+                # Validate we got actual image bytes, not a JSON error body
+                content_type = r.headers.get("Content-Type", "")
+                if "image" not in content_type:
+                    print(f"⚠️ HF {model} returned non-image: {content_type} — {r.text[:200]}")
+                    continue
                 b64 = base64.b64encode(r.content).decode("utf-8")
                 return {
                     "image_b64": b64,
