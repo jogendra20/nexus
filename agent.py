@@ -1,3 +1,15 @@
+
+AUTOMATION_PROMPT = """You are a Python code generator running inside GitHub Actions ubuntu-latest.
+Output ONLY raw Python code. No markdown fences. No explanation. No preamble.
+The very first line must be a Python import or statement.
+
+Available packages: requests, pandas, beautifulsoup4, yfinance, lxml, playwright, scrapling, json, os, sys, re, datetime
+Always print results to stdout.
+For NSE top gainers use: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
+Never use nseindia.com directly — it blocks scrapers.
+Scripts must finish within 5 minutes.
+Wrap everything in try/except and print errors to stdout.
+"""
 import os
 import json
 import requests
@@ -35,14 +47,18 @@ def agentic_ask(prompt: str, task: str = "default") -> dict:
         "Content-Type": "application/json"
     }
     
+    is_code = task in ("automation", "code", "deploy")
+    system = AUTOMATION_PROMPT if is_code else SYSTEM_PROMPT
+    max_tok = 1500 if is_code else 400
+
     payload = {
         "model": "llama-3.3-70b-versatile",
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 400,
-        "temperature": 0.7
+        "max_tokens": max_tok,
+        "temperature": 0.3 if is_code else 0.7
     }
     
     try:

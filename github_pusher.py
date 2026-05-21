@@ -1,4 +1,5 @@
 import os
+import time
 import base64
 import requests
 from datetime import datetime
@@ -19,28 +20,15 @@ def push_script(code: str, filename: str = None) -> dict:
     if not filename:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"scripts/auto_{ts}.py"
-
     sha = None
     check = requests.get(f"{BASE_URL}/contents/{filename}", headers=HEADERS)
     if check.status_code == 200:
         sha = check.json().get("sha")
-
     content_b64 = base64.b64encode(code.encode()).decode()
-
-    payload = {
-        "message": f"auto: {filename} via Nexus",
-        "content": content_b64,
-        "branch": BRANCH,
-    }
+    payload = {"message": f"auto: {filename} via Nexus", "content": content_b64, "branch": BRANCH}
     if sha:
         payload["sha"] = sha
-
-    response = requests.put(
-        f"{BASE_URL}/contents/{filename}",
-        headers=HEADERS,
-        json=payload
-    )
-
+    response = requests.put(f"{BASE_URL}/contents/{filename}", headers=HEADERS, json=payload)
     if response.status_code in (200, 201):
         return {"success": True, "filename": filename, "url": response.json()["content"]["html_url"]}
     else:
@@ -75,7 +63,17 @@ def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy",
         headers=HEADERS,
         json=payload
     )
-    if response.status_code == 204:
-        return {"success": True}
-    else:
+    if response.status_code != 204:
         return {"success": False, "error": response.text, "status_code": response.status_code}
+
+    for _ in range(12):
+        time.sleep(4)
+        runs = requests.get(
+            f"{BASE_URL}/actions/runs?event=workflow_dispatch&per_page=5",
+            headers=HEADERS
+        ).json()
+        for run in runs.get("workflow_runs", []):
+            if run["status"] in ("queued", "in_progress"):
+                return {"success": True, "run_id": str(run["id"])}
+
+    return {"success": True, "run_id": None}

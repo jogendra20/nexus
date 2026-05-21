@@ -3,11 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Automation task description'
+        description: "Automation task description"
         required: true
       script_path:
-        description: 'Script to run (e.g. scripts/scrape.py)'
+        description: "Script to run"
         required: true
+      difficulty:
+        required: false
+        default: "easy"
+      provider:
+        required: false
+        default: "unknown"
 
 jobs:
   run:
@@ -17,26 +23,43 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install playwright scrapling
+          pip install requests pandas beautifulsoup4 yfinance lxml playwright scrapling
           playwright install chromium
           playwright install-deps chromium
 
       - name: Run script
         id: run
         run: |
-          START=$(date +%s%3N)
-          python ${{ github.event.inputs.script_path }} && echo "SUCCESS=true" >> $GITHUB_ENV || echo "SUCCESS=false" >> $GITHUB_ENV
-          END=$(date +%s%3N)
-          echo "ELAPSED=$((END-START))" >> $GITHUB_ENV
-        continue-on-error: true
+          set +e
+          OUTPUT=$(timeout 300 python ${{ github.event.inputs.script_path }} 2>&1)
+          EXIT_CODE=$?
+          set -e
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          {
+            echo "output<<ENDOFOUTPUT"
+            echo "$OUTPUT"
+            echo "ENDOFOUTPUT"
+          } >> $GITHUB_OUTPUT
 
-      - name: Report result to Nexus
+      - name: Store output in Nexus
         run: |
-          curl -X POST ${{ secrets.NEXUS_URL }}/result \
-            -H "Content-Type: application/json" \
-            -H "X-API-Key: ${{ secrets.NEXUS_API_KEY }}" \
-            -d "{\"provider\":\"github_models\",\"task\":\"automation\",\"success\":${{ env.SUCCESS }},\"response_time_ms\":${{ env.ELAPSED }}}"
+          python3 - << PYEOF
+          import requests
+          status = "done" if "${{ steps.run.outputs.exit_code }}" == "0" else "failed"
+          requests.post(
+              "${{ secrets.NEXUS_URL }}/store-output",
+              headers={"Content-Type": "application/json", "X-API-Key": "${{ secrets.NEXUS_API_KEY }}"},
+              json={
+                  "run_id": "${{ github.run_id }}",
+                  "status": status,
+                  "output": """${{ steps.run.outputs.output }}""",
+                  "exit_code": int("${{ steps.run.outputs.exit_code }}" or 0),
+                  "task": "${{ github.event.inputs.task }}"
+              },
+              timeout=15
+          )
+          PYEOF
