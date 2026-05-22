@@ -531,12 +531,14 @@ def store_skill_proposal():
     domain = data.get("domain", "")
     if not domain:
         return jsonify({"error": "domain required"}), 400
-    _pending_skill_proposals[domain] = {
+    proposals = _load_proposals()
+    proposals[domain] = {
         "task": data.get("task", ""),
         "code": data.get("code", ""),
         "output_sample": data.get("output_sample", ""),
         "run_id": data.get("run_id", "")
     }
+    _save_proposals(proposals)
     return jsonify({"status": "stored", "domain": domain})
 
 @app.route("/approve-skill", methods=["POST"])
@@ -544,9 +546,11 @@ def approve_skill():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     domain = request.json.get("domain", "")
-    if domain not in _pending_skill_proposals:
+    proposals = _load_proposals()
+    if domain not in proposals:
         return jsonify({"error": "No pending proposal"}), 404
-    proposal = _pending_skill_proposals.pop(domain)
+    proposal = proposals.pop(domain)
+    _save_proposals(proposals)
     import base64
     token = os.getenv("GITHUB_TOKEN")
     headers = {
@@ -580,7 +584,9 @@ def reject_skill():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     domain = request.json.get("domain", "")
-    _pending_skill_proposals.pop(domain, None)
+    proposals = _load_proposals()
+    proposals.pop(domain, None)
+    _save_proposals(proposals)
     return jsonify({"status": "rejected"})
 
 if __name__ == "__main__":
