@@ -20,6 +20,8 @@ def get_automation_prompt():
         'Scripts must finish within 5 minutes.\n'
         'Wrap everything in try/except and print errors to stdout.\n'
         'IMPORTANT: If the skill reference contains a VERIFIED RECIPE that matches the task, copy it exactly. Do not modify selectors, URLs, or structure.\n'
+        'NEVER import playwright_stealth or stealth_sync — this module is not available.\n'
+        'For simple HTML sites use requests+beautifulsoup4, NOT Playwright.\n'
     )
     if skill:
         return base + '\n# SKILL REFERENCE - follow these patterns exactly:\n' + skill
