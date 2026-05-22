@@ -96,26 +96,6 @@ def deploy():
     if not prompt:
         return jsonify({"error": "prompt required"}), 400
 
-    # Step 0: Check if we have recon data for any URL in the prompt
-    import re as _re
-    url_match = _re.search(r"(https?://\S+|[\w.-]+\.(com|in|org|net|ac\.in|edu|gov)\S*)", prompt)
-    if url_match:
-        raw_url = url_match.group(0)
-        full_url = raw_url if raw_url.startswith("http") else "https://" + raw_url
-        site_key = full_url.replace("https://","").replace("http://","").rstrip("/")
-        sites = _load_sites_json()
-        if site_key not in sites:
-            # Trigger recon workflow first
-            from github_pusher import _trigger_recon
-            _trigger_recon(full_url, site_key)
-            # Wait for recon (max 90s)
-            import time as _time
-            for _ in range(9):
-                _time.sleep(10)
-                sites = _load_sites_json()
-                if site_key in sites:
-                    break
-
     # Step 1: Generate code via Nexus router
     result = router.ask(prompt, task=task, difficulty=difficulty)
     code   = result.get("response", "")
