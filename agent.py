@@ -19,6 +19,7 @@ def get_automation_prompt():
         'Always include: run_id = os.environ.get("RUN_ID", "")\n'
         'Scripts must finish within 5 minutes.\n'
         'Wrap everything in try/except and print errors to stdout.\n'
+        'IMPORTANT: If the skill reference contains a VERIFIED RECIPE that matches the task, copy it exactly. Do not modify selectors, URLs, or structure.\n'
     )
     if skill:
         return base + '\n# SKILL REFERENCE - follow these patterns exactly:\n' + skill
