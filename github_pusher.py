@@ -77,3 +77,18 @@ def trigger_workflow(script_path: str, task: str = "", difficulty: str = "easy",
                 return {"success": True, "run_id": str(run["id"])}
 
     return {"success": True, "run_id": None}
+
+def _trigger_recon(url: str, site_key: str) -> dict:
+    payload = {
+        "ref": BRANCH,
+        "inputs": {
+            "url": url,
+            "site_key": site_key
+        }
+    }
+    response = requests.post(
+        f"{BASE_URL}/actions/workflows/recon.yml/dispatches",
+        headers=HEADERS,
+        json=payload
+    )
+    return {"success": response.status_code == 204}
