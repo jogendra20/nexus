@@ -382,5 +382,143 @@ def reload_skills():
     _load_skills()
     return jsonify({"status": "reloaded", "chars": len(_skills_cache["content"])})
 
+
+# ── Recon system ──────────────────────────────────────────────────
+
+import json as _json
+
+_recon_cache = {}  # site_key -> recon data (in-memory, backed by GitHub)
+_pending_approvals = {}  # site_key -> {"old": ..., "new": ..., "chat_id": ...}
+
+GITHUB_RAW = "https://raw.githubusercontent.com/jogendra20/Automate/main/skills/sites.json"
+GITHUB_API = "https://api.github.com/repos/jogendra20/Automate/contents/skills/sites.json"
+
+def _load_sites_json():
+    try:
+        r = requests.get(GITHUB_RAW, timeout=8)
+        if r.status_code == 200:
+            return r.json()
+    except:
+        pass
+    return {}
+
+def _save_sites_json(data: dict):
+    import base64
+    token = os.getenv("GITHUB_TOKEN")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    check = requests.get(GITHUB_API, headers=headers, timeout=8)
+    sha = check.json().get("sha") if check.status_code == 200 else None
+    content_b64 = base64.b64encode(_json.dumps(data, indent=2).encode()).decode()
+    payload = {"message": "auto: update sites.json", "content": content_b64, "branch": "main"}
+    if sha:
+        payload["sha"] = sha
+    requests.put(GITHUB_API, headers=headers, json=payload, timeout=10)
+
+@app.route("/store-recon", methods=["POST"])
+def store_recon():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    site_key = data.get("site_key", "")
+    if not site_key:
+        return jsonify({"error": "site_key required"}), 400
+
+    sites = _load_sites_json()
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if site_key in sites:
+        # Site exists — compare selectors
+        old = sites[site_key]
+        old_buttons = set(old.get("buttons", []))
+        new_buttons = set(data.get("buttons", []))
+        changed = old_buttons != new_buttons or old.get("has_stock_links") != data.get("has_stock_links")
+
+        if changed:
+            _pending_approvals[site_key] = {"old": old, "new": data}
+            if token and chat_id:
+                diff_msg = (
+                    f"🔄 *Selector change detected*\n\n"
+                    f"Site: `{site_key}`\n\n"
+                    f"Old buttons: {list(old_buttons)[:5]}\n"
+                    f"New buttons: {list(new_buttons)[:5]}\n\n"
+                    f"Reply:\n"
+                    f"`approve {site_key}` — update skill\n"
+                    f"`reject {site_key}` — keep old"
+                )
+                requests.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": diff_msg, "parse_mode": "Markdown"},
+                    timeout=10
+                )
+            return jsonify({"status": "pending_approval", "site_key": site_key})
+        else:
+            # No change — just update last_checked
+            sites[site_key]["last_checked"] = data.get("run_id", "")
+            _save_sites_json(sites)
+            return jsonify({"status": "no_change"})
+    else:
+        # New site — store directly, notify
+        from datetime import datetime
+        data["last_checked"] = datetime.now().isoformat()
+        data["working"] = True
+        sites[site_key] = data
+        _save_sites_json(sites)
+        if token and chat_id:
+            requests.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": (
+                        f"✅ *New site added to skills*\n\n"
+                        f"`{site_key}`\n"
+                        f"Buttons: {data.get('buttons', [])[:5]}\n"
+                        f"Stock links: {data.get('has_stock_links')}\n"
+                        f"Tables: {data.get('tables')}"
+                    ),
+                    "parse_mode": "Markdown"
+                },
+                timeout=10
+            )
+        return jsonify({"status": "stored", "site_key": site_key})
+
+@app.route("/approve-recon", methods=["POST"])
+def approve_recon():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    site_key = request.json.get("site_key", "")
+    if site_key not in _pending_approvals:
+        return jsonify({"error": "No pending approval for this site"}), 404
+    sites = _load_sites_json()
+    from datetime import datetime
+    new_data = _pending_approvals.pop(site_key)["new"]
+    new_data["last_checked"] = datetime.now().isoformat()
+    new_data["working"] = True
+    sites[site_key] = new_data
+    _save_sites_json(sites)
+    return jsonify({"status": "approved", "site_key": site_key})
+
+@app.route("/reject-recon", methods=["POST"])
+def reject_recon():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    site_key = request.json.get("site_key", "")
+    _pending_approvals.pop(site_key, None)
+    return jsonify({"status": "rejected", "site_key": site_key})
+
+@app.route("/get-recon", methods=["POST"])
+def get_recon():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    site_key = request.json.get("site_key", "")
+    sites = _load_sites_json()
+    if site_key in sites:
+        return jsonify({"found": True, "data": sites[site_key]})
+    return jsonify({"found": False})
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)

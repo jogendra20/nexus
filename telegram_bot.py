@@ -229,7 +229,39 @@ def process_message(text: str, chat_id: str):
     text = text.strip()
 
     # Hard commands
+    # Recon approvals
+    if text.lower().startswith("approve "):
+        site_key = text[8:].strip()
+        nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
+        nexus_key = os.getenv("NEXUS_API_KEY", "")
+        try:
+            import json as _j, urllib.request as _ur
+            payload = _j.dumps({"site_key": site_key}).encode()
+            req = _ur.Request(f"{nexus_url}/approve-recon", data=payload,
+                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+            _ur.urlopen(req, timeout=10)
+            send(chat_id, f"approved {site_key} - skill updated")
+        except Exception as e:
+            send(chat_id, f"approve failed: {e}")
+        return
+
+    if text.lower().startswith("reject "):
+        site_key = text[7:].strip()
+        nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
+        nexus_key = os.getenv("NEXUS_API_KEY", "")
+        try:
+            import json as _j, urllib.request as _ur
+            payload = _j.dumps({"site_key": site_key}).encode()
+            req = _ur.Request(f"{nexus_url}/reject-recon", data=payload,
+                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+            _ur.urlopen(req, timeout=10)
+            send(chat_id, f"rejected {site_key} - keeping old selectors")
+        except Exception as e:
+            send(chat_id, f"reject failed: {e}")
+        return
+
     if text == "/start":
+
         send(chat_id,
             "👋 *NEXUS Online*\n\n"
             "I route your questions to the best AI agents.\n\n"
