@@ -523,6 +523,41 @@ def get_recon():
 
 _pending_skill_proposals = {}
 
+import json as _json
+_PROPOSALS_FILE = "/tmp/skill_proposals.json"
+
+def _load_proposals():
+    try:
+        from supabase import create_client
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        sb = create_client(url, key)
+        res = sb.table("skill_proposals").select("*").execute()
+        return {row["domain"]: row for row in res.data}
+    except:
+        try:
+            with open(_PROPOSALS_FILE) as f:
+                return _json.load(f)
+        except:
+            return {}
+
+def _save_proposals(data):
+    try:
+        from supabase import create_client
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        sb = create_client(url, key)
+        sb.table("skill_proposals").delete().neq("domain", "").execute()
+        for domain, proposal in data.items():
+            sb.table("skill_proposals").upsert({"domain": domain, **proposal}).execute()
+    except:
+        try:
+            with open(_PROPOSALS_FILE, "w") as f:
+                _json.dump(data, f)
+        except:
+            pass
+
+
 @app.route("/store-skill-proposal", methods=["POST"])
 def store_skill_proposal():
     if not auth_required():
