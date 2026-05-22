@@ -230,7 +230,38 @@ def process_message(text: str, chat_id: str):
 
     # Hard commands
     # Recon approvals
+    if text.lower().startswith("approve skill "):
+        domain = text[14:].strip()
+        nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
+        nexus_key = os.getenv("NEXUS_API_KEY", "")
+        try:
+            import json as _j, urllib.request as _ur
+            payload = _j.dumps({"domain": domain}).encode()
+            req = _ur.Request(f"{nexus_url}/approve-skill", data=payload,
+                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+            _ur.urlopen(req, timeout=10)
+            send(chat_id, f"approved - {domain} added to skill file")
+        except Exception as e:
+            send(chat_id, f"approve failed: {e}")
+        return
+
+    if text.lower().startswith("reject skill "):
+        domain = text[13:].strip()
+        nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
+        nexus_key = os.getenv("NEXUS_API_KEY", "")
+        try:
+            import json as _j, urllib.request as _ur
+            payload = _j.dumps({"domain": domain}).encode()
+            req = _ur.Request(f"{nexus_url}/reject-skill", data=payload,
+                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+            _ur.urlopen(req, timeout=10)
+            send(chat_id, f"rejected - {domain} skipped")
+        except Exception as e:
+            send(chat_id, f"reject failed: {e}")
+        return
+
     if text.lower().startswith("approve "):
+
         site_key = text[8:].strip()
         nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
         nexus_key = os.getenv("NEXUS_API_KEY", "")

@@ -520,5 +520,68 @@ def get_recon():
     return jsonify({"found": False})
 
 
+
+_pending_skill_proposals = {}
+
+@app.route("/store-skill-proposal", methods=["POST"])
+def store_skill_proposal():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    domain = data.get("domain", "")
+    if not domain:
+        return jsonify({"error": "domain required"}), 400
+    _pending_skill_proposals[domain] = {
+        "task": data.get("task", ""),
+        "code": data.get("code", ""),
+        "output_sample": data.get("output_sample", ""),
+        "run_id": data.get("run_id", "")
+    }
+    return jsonify({"status": "stored", "domain": domain})
+
+@app.route("/approve-skill", methods=["POST"])
+def approve_skill():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    domain = request.json.get("domain", "")
+    if domain not in _pending_skill_proposals:
+        return jsonify({"error": "No pending proposal"}), 404
+    proposal = _pending_skill_proposals.pop(domain)
+    import base64
+    token = os.getenv("GITHUB_TOKEN")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    api = "https://api.github.com/repos/jogendra20/Automate/contents/skills/playwright.md"
+    check = requests.get(api, headers=headers, timeout=8)
+    current = base64.b64decode(check.json().get("content","")).decode() if check.status_code == 200 else ""
+    sha = check.json().get("sha") if check.status_code == 200 else None
+    new_recipe = (
+        f"\n\n## VERIFIED RECIPE: {domain} (copy exactly, do not modify)\n\n"
+        f"# Task: {proposal['task']}\n"
+        f"{proposal['code']}"
+    )
+    updated = current + new_recipe
+    payload = {
+        "message": f"feat: add verified recipe for {domain}",
+        "content": base64.b64encode(updated.encode()).decode(),
+        "branch": "main"
+    }
+    if sha:
+        payload["sha"] = sha
+    r = requests.put(api, headers=headers, json=payload, timeout=10)
+    if r.status_code in (200, 201):
+        return jsonify({"status": "approved", "domain": domain})
+    return jsonify({"status": "failed", "code": r.status_code}), 500
+
+@app.route("/reject-skill", methods=["POST"])
+def reject_skill():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    domain = request.json.get("domain", "")
+    _pending_skill_proposals.pop(domain, None)
+    return jsonify({"status": "rejected"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
