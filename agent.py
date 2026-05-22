@@ -28,17 +28,7 @@ def get_automation_prompt():
     return base
 
 
-AUTOMATION_PROMPT = """You are a Python code generator running inside GitHub Actions ubuntu-latest.
-Output ONLY raw Python code. No markdown fences. No explanation. No preamble.
-The very first line must be a Python import or statement.
-
-Available packages: requests, pandas, beautifulsoup4, yfinance, lxml, playwright, scrapling, json, os, sys, re, datetime
-Always print results to stdout.
-For NSE top gainers use: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
-Never use nseindia.com directly — it blocks scrapers.
-Scripts must finish within 5 minutes.
-Wrap everything in try/except and print errors to stdout.
-"""
+AUTOMATION_PROMPT = get_automation_prompt()
 import os
 import json
 import requests
