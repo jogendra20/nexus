@@ -1,3 +1,29 @@
+import requests as _requests
+
+def load_skill(name):
+    try:
+        url = f'https://raw.githubusercontent.com/jogendra20/Automate/main/skills/{name}.md'
+        r = _requests.get(url, timeout=8)
+        if r.status_code == 200:
+            return r.text
+    except:
+        pass
+    return ''
+
+def get_automation_prompt():
+    skill = load_skill('playwright')
+    base = (
+        'You are a Python code generator for GitHub Actions ubuntu-latest.\n'
+        'Output ONLY raw Python code. No markdown. No explanation. No preamble.\n'
+        'First line must be a Python import or statement.\n'
+        'Always include: run_id = os.environ.get("RUN_ID", "")\n'
+        'Scripts must finish within 5 minutes.\n'
+        'Wrap everything in try/except and print errors to stdout.\n'
+    )
+    if skill:
+        return base + '\n# SKILL REFERENCE - follow these patterns exactly:\n' + skill
+    return base
+
 
 AUTOMATION_PROMPT = """You are a Python code generator running inside GitHub Actions ubuntu-latest.
 Output ONLY raw Python code. No markdown fences. No explanation. No preamble.
@@ -48,7 +74,7 @@ def agentic_ask(prompt: str, task: str = "default") -> dict:
     }
     
     is_code = task in ("automation", "code", "deploy")
-    system = AUTOMATION_PROMPT if is_code else SYSTEM_PROMPT
+    system = get_automation_prompt() if is_code else SYSTEM_PROMPT
     max_tok = 1500 if is_code else 400
 
     payload = {
