@@ -118,7 +118,7 @@ def _judge(query: str, tool: str, output: str) -> bool:
     """Ask LLM if the result was good."""
     prompt = JUDGE_PROMPT.format(
         query=query, tool=tool,
-        output=output[:500]
+        output=output[:3000]
     )
     raw = _groq([{"role": "user", "content": prompt}], max_tokens=100)
     try:
@@ -212,9 +212,13 @@ def run(query: str, router, history: list = None) -> dict:
         tool = step.get("tool", "ask")
         tool_input = step.get("input", query)
 
-        # Inject previous step output if chaining
-        if last_output and "{previous}" in tool_input:
-            tool_input = tool_input.replace("{previous}", last_output[:500])
+        # Inject previous step output — always, not just when LLM writes {previous}
+        if last_output:
+            if "{previous}" in tool_input:
+                tool_input = tool_input.replace("{previous}", last_output[:6000])
+            else:
+                # Auto-append previous context so LLM has full picture
+                tool_input = f"{tool_input}\n\nContext from previous step:\n{last_output[:6000]}"
 
         output = _execute_tool(tool, tool_input, router)
 
