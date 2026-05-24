@@ -13,6 +13,7 @@ from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
 from providers.github_models import GitHubModelsProvider
 from providers.huggingface import HuggingFaceProvider
+from providers.jina import JinaProvider
 from scorer import update_score
 import time
 
@@ -34,6 +35,7 @@ class Router:
             "mistral":       MistralProvider(),
             "github_models": GitHubModelsProvider(),
             "huggingface":   HuggingFaceProvider(),
+            "jina":           JinaProvider(),
         }
 
     def classify(self, prompt: str) -> str:
@@ -51,6 +53,35 @@ class Router:
         start = time.time()
         if not task:
             task = self.classify(prompt)
+
+        # Route scraping intent to Jina
+        if task == "scraping":
+            try:
+                jina_result = self.providers["jina"].ask(prompt)
+                raw_content = jina_result.get("response", "")
+                title = jina_result.get("title", "")
+
+                if not raw_content:
+                    return {"response": "Jina returned empty content", "provider": "jina", "task": "scraping"}
+
+                # Use Groq to extract what user actually wants
+                extract_prompt = f"""The user asked: {prompt}
+
+Here is the page content in markdown:
+{raw_content[:6000]}
+
+Extract exactly what the user asked for. Be concise and structured. No markdown fences."""
+
+                groq_result = self.providers["groq"].ask(extract_prompt, "default")
+                return {
+                    "response": groq_result.get("response", raw_content[:2000]),
+                    "provider": "jina+groq",
+                    "task": "scraping",
+                    "title": title
+                }
+            except Exception as e:
+                print(f"[Jina] failed: {e} — falling back to automation")
+                task = "automation"
 
         # Route search intent directly to SearchProvider
         if task == "search":

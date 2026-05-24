@@ -17,6 +17,7 @@ NVIDIA_KEY = os.getenv("NVIDIA_KEY")
 CEREBRAS_KEY = os.getenv("CEREBRAS_KEY")
 MISTRAL_KEY  = os.getenv("MISTRAL_KEY")
 GITHUB_MODELS_KEY = os.getenv("GITHUB_MODELS_KEY")
+JINA_API_KEY      = os.getenv("JINA_API_KEY")
 
 
 TASK_ROUTES = {
@@ -26,6 +27,7 @@ TASK_ROUTES = {
     "reasoning": ["github_models", "nvidia", "gemini", "openrouter", "groq"],
     "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
     "automation": ["github_models", "groq", "cerebras", "openrouter", "mistral"],
+    "scraping":   ["jina"],  # always goes to Jina, no LLM fallback for fetching
     "default":   ["cerebras", "gemini", "github_models", "nvidia", "huggingface", "openrouter", "groq"],
 } 
 
@@ -51,5 +53,6 @@ TASK_KEYWORDS = {
     "coding":    ["code", "python", "debug", "build", "fix", "function", "script"],
     "reasoning": ["analyze", "explain", "reason", "compare", "think", "why"],
     "automation": ["playwright", "scrape", "crawl", "automate", "fill form", "extract", "portal", "scrapling", "browser"],
+    "scraping":  ["extract from", "get data from", "fetch content", "get content from", "pull from", "read site"],
     "premium":   ["complex", "detailed", "deep", "thorough"],
 }
