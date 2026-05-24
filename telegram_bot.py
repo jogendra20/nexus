@@ -9,6 +9,25 @@ import re
 import requests
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+
+# ── Conversation memory ───────────────────────────────────────────
+_memory = {}  # chat_id -> list of {role, content}
+_MEMORY_LIMIT = 10  # last 10 exchanges
+
+def get_history(chat_id: str) -> list:
+    return _memory.get(chat_id, [])
+
+def add_to_history(chat_id: str, role: str, content: str):
+    if chat_id not in _memory:
+        _memory[chat_id] = []
+    _memory[chat_id].append({"role": role, "content": content})
+    # Keep only last N exchanges
+    if len(_memory[chat_id]) > _MEMORY_LIMIT * 2:
+        _memory[chat_id] = _memory[chat_id][-(_MEMORY_LIMIT * 2):]
+
+def clear_history(chat_id: str):
+    _memory[chat_id] = []
+    
 CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID")
 BASE_URL  = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
@@ -152,9 +171,19 @@ def agent_header(provider: str) -> str:
 
 # ── Single agent response ─────────────────────────────────────────
 def single_agent(text: str, chat_id: str, router, task: str = "default"):
-    result   = router.ask(text, task=task)
+    # Build memory-aware prompt
+    history = get_history(chat_id)
+    if history:
+        context = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in history[-6:]])
+        prompt = f"Previous conversation:\n{context}\n\nUSER: {text}"
+    else:
+        prompt = text
+
+    add_to_history(chat_id, "user", text)
+    result   = router.ask(prompt, task=task)
     response = result.get("response", "No response")
     provider = result.get("provider", "unknown")
+    add_to_history(chat_id, "assistant", response[:300])
 
     formatted = format_response(response)
     if len(formatted) > 3800:
@@ -234,30 +263,42 @@ def process_message(text: str, chat_id: str):
         domain = text[14:].strip()
         nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
         nexus_key = os.getenv("NEXUS_API_KEY", "")
-        try:
-            import json as _j, urllib.request as _ur
-            payload = _j.dumps({"domain": domain}).encode()
-            req = _ur.Request(f"{nexus_url}/approve-skill", data=payload,
-                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
-            _ur.urlopen(req, timeout=10)
-            send(chat_id, f"approved - {domain} added to skill file")
-        except Exception as e:
-            send(chat_id, f"approve failed: {e}")
+        import json as _j, urllib.request as _ur, time as _t
+        send(chat_id, f"⏳ Approving `{domain}`...")
+        for attempt in range(3):
+            try:
+                payload = _j.dumps({"domain": domain}).encode()
+                req = _ur.Request(f"{nexus_url}/approve-skill", data=payload,
+                    headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+                _ur.urlopen(req, timeout=35)
+                send(chat_id, f"✅ approved — `{domain}` added to skill file")
+                break
+            except Exception as e:
+                if attempt < 2:
+                    send(chat_id, f"⏳ Render waking up, retry {attempt+1}/3...")
+                    _t.sleep(15)
+                else:
+                    send(chat_id, f"❌ approve failed after 3 attempts: {e}")
         return
 
     if text.lower().startswith("reject skill "):
         domain = text[13:].strip()
         nexus_url = os.getenv("NEXUS_URL", "http://localhost:8003")
         nexus_key = os.getenv("NEXUS_API_KEY", "")
-        try:
-            import json as _j, urllib.request as _ur
-            payload = _j.dumps({"domain": domain}).encode()
-            req = _ur.Request(f"{nexus_url}/reject-skill", data=payload,
-                headers={"Content-Type":"application/json","X-API-Key":nexus_key})
-            _ur.urlopen(req, timeout=10)
-            send(chat_id, f"rejected - {domain} skipped")
-        except Exception as e:
-            send(chat_id, f"reject failed: {e}")
+        import json as _j, urllib.request as _ur, time as _t
+        for attempt in range(3):
+            try:
+                payload = _j.dumps({"domain": domain}).encode()
+                req = _ur.Request(f"{nexus_url}/reject-skill", data=payload,
+                    headers={"Content-Type":"application/json","X-API-Key":nexus_key})
+                _ur.urlopen(req, timeout=35)
+                send(chat_id, f"✅ rejected — `{domain}` skipped")
+                break
+            except Exception as e:
+                if attempt < 2:
+                    _t.sleep(15)
+                else:
+                    send(chat_id, f"❌ reject failed after 3 attempts: {e}")
         return
 
     if text.lower().startswith("approve "):
@@ -289,6 +330,11 @@ def process_message(text: str, chat_id: str):
             send(chat_id, f"rejected {site_key} - keeping old selectors")
         except Exception as e:
             send(chat_id, f"reject failed: {e}")
+        return
+
+    if text == "/clear":
+        clear_history(chat_id)
+        send(chat_id, "🧹 Memory cleared.")
         return
 
     if text == "/start":

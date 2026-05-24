@@ -102,7 +102,14 @@ def _rule_classify(prompt: str) -> str:
     if any(w in p for w in image_words):
         return "image"
 
-    auto_words = ["scrape", "automate", "extract", "crawl", "fill form", "playwright",
+    scraping_words = ["extract from", "get data from", "fetch content",
+                      "get content from", "pull from", "read site",
+                      "get text from", "fetch from url", "extract content",
+                      "scrape", "extract"]
+    if any(w in p for w in scraping_words):
+        return "scraping"
+
+    auto_words = ["automate", "crawl", "fill form", "playwright",
                   "download data", "fetch data", "run script", "schedule", "monitor",
                   "check every", "alert me"]
     if any(w in p for w in auto_words):

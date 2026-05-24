@@ -527,14 +527,19 @@ import json as _json
 _PROPOSALS_FILE = "/tmp/skill_proposals.json"
 
 def _load_proposals():
+    import urllib.request as _ur
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
     try:
-        from supabase import create_client
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-        sb = create_client(url, key)
-        res = sb.table("skill_proposals").select("*").execute()
-        return {row["domain"]: row for row in res.data}
-    except:
+        req = _ur.Request(
+            f"{sb_url}/rest/v1/skill_proposals?select=*",
+            headers={"apikey": sb_key, "Authorization": f"Bearer {sb_key}"}
+        )
+        res = _ur.urlopen(req, timeout=8)
+        rows = _json.loads(res.read())
+        return {row["domain"]: row for row in rows}
+    except Exception as e:
+        print(f"[Proposals] Supabase load failed: {e}")
         try:
             with open(_PROPOSALS_FILE) as f:
                 return _json.load(f)
@@ -542,20 +547,32 @@ def _load_proposals():
             return {}
 
 def _save_proposals(data):
-    try:
-        from supabase import create_client
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-        sb = create_client(url, key)
-        sb.table("skill_proposals").delete().neq("domain", "").execute()
-        for domain, proposal in data.items():
-            sb.table("skill_proposals").upsert({"domain": domain, **proposal}).execute()
-    except:
+    import urllib.request as _ur
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
+    for domain, proposal in data.items():
         try:
-            with open(_PROPOSALS_FILE, "w") as f:
-                _json.dump(data, f)
-        except:
-            pass
+            payload = _json.dumps({"domain": domain, **proposal}).encode()
+            req = _ur.Request(
+                f"{sb_url}/rest/v1/skill_proposals",
+                data=payload,
+                headers={
+                    "apikey": sb_key,
+                    "Authorization": f"Bearer {sb_key}",
+                    "Content-Type": "application/json",
+                    "Prefer": "resolution=merge-duplicates"
+                },
+                method="POST"
+            )
+            _ur.urlopen(req, timeout=8)
+        except Exception as e:
+            print(f"[Proposals] Supabase save failed for {domain}: {e}")
+    # Always write local backup too
+    try:
+        with open(_PROPOSALS_FILE, "w") as f:
+            _json.dump(data, f)
+    except:
+        pass
 
 
 @app.route("/store-skill-proposal", methods=["POST"])

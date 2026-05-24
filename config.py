@@ -52,7 +52,7 @@ TASK_KEYWORDS = {
     "search":    ["search", "news", "latest", "today", "current", "find"],
     "coding":    ["code", "python", "debug", "build", "fix", "function", "script"],
     "reasoning": ["analyze", "explain", "reason", "compare", "think", "why"],
-    "automation": ["playwright", "scrape", "crawl", "automate", "fill form", "extract", "portal", "scrapling", "browser"],
+    "automation": ["playwright", "crawl", "automate", "fill form", "portal", "scrapling", "browser"],
     "scraping":  ["extract from", "get data from", "fetch content", "get content from", "pull from", "read site"],
     "premium":   ["complex", "detailed", "deep", "thorough"],
 }
