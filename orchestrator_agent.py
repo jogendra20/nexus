@@ -5,11 +5,11 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 TOOLS = {
-    "jina":   "Fetch and extract content from a URL. Use when user gives a URL or wants content from a website.",
-    "search": "Search live web for current data, prices, news, scores. Use for anything time-sensitive.",
+    "jina":   "Fetch and extract content from a URL. Use when user gives a URL or wants content from a specific website.",
+    "search": "Search live web. Use for: latest news, new tools, recent releases, current prices, anything with words like new/latest/recent/today/best in 2024-2025. ALWAYS prefer search over ask for anything that could have changed in the last 6 months.",
     "image":  "Generate an image from a text description.",
     "deploy": "Write and run a Python automation script via GitHub Actions. Use for scraping, form filling, monitoring.",
-    "ask":    "Answer using LLM reasoning. Use for explanations, coding help, analysis, general questions.",
+    "ask":    "Answer using LLM reasoning. Use ONLY for timeless topics: math, theory, coding help, explanations of stable concepts. Never use for anything involving recent events or new releases.",
 }
 
 PLAN_PROMPT = """You are an orchestrator for a personal AI system.
@@ -24,8 +24,10 @@ User query: {query}
 
 Your job:
 1. Decide which tool(s) to use, in order.
-2. If the query is unclear or missing info, return clarify.
-3. Return ONLY a JSON object. No explanation. No markdown.
+2. If the query contains words like: new, latest, recent, best, top, current, today, 2024, 2025 — you MUST use search.
+3. If the query asks about any tool, product, library, framework, or technology — use search first, not ask.
+4. If the query is unclear or missing info, return clarify.
+5. Return ONLY a JSON object. No explanation. No markdown.
 
 Return format:
 {{
