@@ -375,6 +375,18 @@ Rules:
         "triggered": trigger_result["success"]
     })
 
+@app.route("/orchestrate", methods=["POST"])
+def orchestrate():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    query = data.get("prompt", "")
+    if not query:
+        return jsonify({"error": "prompt required"}), 400
+    from orchestrator_agent import run as orch_run
+    result = orch_run(query, router)
+    return jsonify(result)
+
 @app.route("/reload-skills", methods=["POST"])
 def reload_skills():
     if not auth_required():

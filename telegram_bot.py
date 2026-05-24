@@ -365,47 +365,39 @@ def process_message(text: str, chat_id: str):
         return
 
     from router import Router
+    from orchestrator_agent import run as orch_run
     router = Router()
 
-    intent = detect_intent(text)
+    send(chat_id, "🎯 *Routing...*")
+    result = orch_run(text, router)
 
-    if intent == "image":
-        send(chat_id, "🎨 *Generating image...*")
-        result = router.generate_image(text)
-        if "image_b64" in result:
-            send_photo(chat_id, image_b64=result["image_b64"], caption=text[:100])
-        elif "image_url" in result:
-            send_photo(chat_id, image_url=result["image_url"], caption=text[:100])
+    rtype = result.get("type", "text")
+    content_val = result.get("content", "No response")
+
+    if rtype == "clarify":
+        send(chat_id, f"❓ {content_val}")
         return
 
-    if intent == "search":
-        send(chat_id, "🔍 *Searching live...*")
-        from providers.search import SearchProvider
-        sp      = SearchProvider()
-        data    = sp.search(text, max_results=4, freshness="day")
-        results = data.get("results", [])
-        if not results:
-            send(chat_id, "No results found.")
-            return
-        lines = ["🔍 *Live Results*\n"]
-        for r in results[:4]:
-            title   = r.get("title", "")[:60]
-            url     = r.get("url", "")
-            source  = r.get("source", "")
-            snippet = r.get("snippet", "")[:80]
-            lines.append(f"• [{title}]({url})\n  _{source}_ — {snippet}...")
-        send(chat_id, "\n".join(lines))
+    if rtype == "image":
+        if content_val.startswith("data:image"):
+            b64 = content_val.split(",")[1]
+            send_photo(chat_id, image_b64=b64, caption=text[:100])
+        else:
+            send_photo(chat_id, image_url=content_val, caption=text[:100])
         return
 
-    if intent == "code":
-        code_agent(text, chat_id, router)
+    if rtype == "deploy":
+        from router import Router as R
+        r2 = R()
+        deploy_result = r2.ask(content_val, task="automation", difficulty="medium")
+        send(chat_id, f"⚡ *Deploy triggered*\nProvider: {deploy_result.get('provider')}")
         return
 
-    # Chat — check complexity
-    if is_complex(text):
-        multi_agent(text, chat_id, router)
-    else:
-        single_agent(text, chat_id, router)
+    formatted = format_response(content_val)
+    MAX = 4000
+    chunks = [formatted[i:i+MAX] for i in range(0, len(formatted), MAX)]
+    for chunk in chunks:
+        send(chat_id, chunk)
 
 # ── Webhook handler ───────────────────────────────────────────────
 def handle_update(update: dict):
