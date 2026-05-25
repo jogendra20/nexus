@@ -38,8 +38,13 @@ def _groq(messages: list, max_tokens=800) -> str:
         res = urllib.request.urlopen(req, timeout=15)
         data = json.loads(res.read())
         return data["choices"][0]["message"]["content"].strip()
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[GROQ_DEBUG] status={e.code} body={body[:300]}")
+        return f'{{"error": "{e}"}}' 
     except Exception as e:
-        return f'{{"error": "{e}"}}'
+        print(f"[GROQ_DEBUG] unexpected={e}")
+        return f'{{"error": "{e}"}}'  
 
 # ── Supabase logging ──────────────────────────────────────────────
 def _log(query_type, plan, tool_used, success, failure_reason="", result_preview=""):
