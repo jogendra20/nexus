@@ -154,6 +154,20 @@ def phase_analyze(parse_result: dict, query: str, agent_log: list) -> dict:
             "output_format": "points",
             "preferred_providers": ["cerebras"]
         }
+    # Hard override: force search for live data queries
+    intent_lower = parse_result.get("intent", query).lower()
+    keywords = parse_result.get("keywords", [])
+    force_search = any(w in intent_lower for w in [
+        "latest", "recent", "current", "today", "news", "price",
+        "live", "now", "2024", "2025", "2026", "trending"
+    ]) or any(w in str(keywords).lower() for w in [
+        "latest", "recent", "news", "price", "current"
+    ])
+    if force_search and result.get("tool_plan", [{}])[0].get("tool") != "search":
+        print(f"[ANALYZE] forcing search for: {intent_lower[:60]}")
+        result["tool_plan"] = [{"tool": "search", "input": query, "reason": "forced_live"}]
+        result["query_type"] = "live_query"
+
     agent_log[-1].update({"status": "done", "duration": round(time.time()-t0, 2)})
     return result
 
