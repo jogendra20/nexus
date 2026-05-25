@@ -653,5 +653,12 @@ def reject_skill():
     _save_proposals(proposals)
     return jsonify({"status": "rejected"})
 
+
+@app.route("/debug-env", methods=["GET"])
+def debug_env():
+    import os
+    key = os.getenv("GROQ_KEY", "MISSING")
+    return jsonify({"groq_key_length": len(key), "groq_key_prefix": key[:8] if key != "MISSING" else "MISSING"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
