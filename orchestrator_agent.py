@@ -30,7 +30,7 @@ def _groq(messages: list, max_tokens=800) -> str:
         "https://api.groq.com/openai/v1/chat/completions",
         data=payload,
         headers={
-            "Authorization": f"Bearer {os.getenv('GROQ_KEY', '')},"
+            "Authorization": f"Bearer {os.getenv('GROQ_KEY', '')}",
             "Content-Type": "application/json"
         }
     )
