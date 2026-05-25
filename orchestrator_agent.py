@@ -21,7 +21,7 @@ DIFFICULTY_ROUTES = {
 # ── Groq LLM call ─────────────────────────────────────────────────
 def _groq(messages: list, max_tokens=800) -> str:
     payload = json.dumps({
-        "model": "llama-3.1-8b-instant",
+        "model": "llama3-8b-8192",
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": 0.1
