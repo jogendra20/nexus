@@ -59,7 +59,7 @@ def _save_cache(prompt_hash: str, intent: str):
 
 def _llm_classify(prompt: str) -> str:
     """Use Groq (fast, free) to classify intent."""
-    groq_key = os.getenv("GROQ_API_KEY", "")
+    groq_key = os.getenv("GROQ_KEY", "")
     if not groq_key:
         return _rule_classify(prompt)
 
