@@ -32,9 +32,11 @@ def _groq(messages: list, max_tokens=800) -> str:
             if provider in _router_ref.providers:
                 try:
                     result = _router_ref.providers[provider].ask(prompt, "default")
-                    response = result.get("response", "")
-                    if response:
-                        return response
+                    if isinstance(result, str):
+                        if result: return result
+                    elif isinstance(result, dict):
+                        response = result.get("response", "")
+                        if response: return response
                 except Exception as e:
                     print(f"[LLM] {provider} failed: {e}")
                     continue
