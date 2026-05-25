@@ -21,16 +21,16 @@ DIFFICULTY_ROUTES = {
 # ── Groq LLM call ─────────────────────────────────────────────────
 def _groq(messages: list, max_tokens=800) -> str:
     payload = json.dumps({
-        "model": "llama3-8b-8192",
+        "model": "llama-3.3-70b",
         "messages": messages,
         "max_tokens": max_tokens,
         "temperature": 0.1
     }).encode()
     req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://api.cerebras.ai/v1/chat/completions",
         data=payload,
         headers={
-            "Authorization": f"Bearer {os.getenv('GROQ_KEY', '')}",
+            "Authorization": f"Bearer {os.getenv('CEREBRAS_API_KEY', '')}",
             "Content-Type": "application/json"
         }
     )
