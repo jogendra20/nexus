@@ -332,7 +332,7 @@ Error output:
 Rules:
 - Analyze why the code failed from the error output
 - Write a complete working replacement script
-- If the error is JSONDecodeError or RemoteDisconnected on nseindia.com, switch to Tickertape API: https://api.tickertape.in/stocks/screener/filter\?sortBy\=change_percent\&sortOrder\=desc\&limit\=10
+- If the error is JSONDecodeError or RemoteDisconnected on nseindia.com, switch to Tickertape API: https://api.tickertape.in/stocks/screener/filter?sortBy=change_percent&sortOrder=desc&limit=10
 - Output ONLY raw Python code. Not the word "Fixed". Not an explanation. A complete runnable Python script.
 - The script must print actual results"""
 
@@ -660,5 +660,29 @@ def debug_env():
     key = os.getenv("GROQ_KEY", "MISSING")
     return jsonify({"groq_key_length": len(key), "groq_key_prefix": key[:8] if key != "MISSING" else "MISSING"})
 
+
+# ── OSINT endpoint ────────────────────────────────────────────────
+
+@app.route("/osint", methods=["POST"])
+def osint():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json or {}
+    query_type = data.get("type", "").strip().lower()
+    query      = data.get("query", "").strip()
+    modules    = data.get("modules", None)
+
+    if not query_type or not query:
+        return jsonify({"error": "Both type and query are required"}), 400
+
+    from osint.dispatcher import dispatch
+    result = dispatch(query_type, query, modules)
+
+    if result.get("legal_block"):
+        return jsonify(result), 403
+
+    return jsonify(result)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
+
