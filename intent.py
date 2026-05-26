@@ -10,7 +10,7 @@ import urllib.request
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
-INTENTS = ["image", "automation", "search", "scraping", "ask"]
+INTENTS = ["image", "automation", "search", "scraping", "osint", "ask"]
 
 SYSTEM_PROMPT = """You are an intent classifier for a personal AI assistant.
 Given a user message, return ONLY a JSON object like:
@@ -21,6 +21,7 @@ Intent options:
 - "automation": user wants to scrape, automate, extract data, fill forms, run scripts, schedule tasks
 - "search": user wants current news, prices, scores, live data, recent events
 - "scraping": user wants to extract content, data, or text from a specific website URL
+- "osint": user wants to investigate/lookup/research a company, IP, domain, phone, or username
 - "ask": general question, analysis, coding help, explanation, conversation
 
 Return ONLY the JSON. No explanation. No markdown."""
@@ -125,6 +126,12 @@ def _rule_classify(prompt: str) -> str:
                       "get text from", "fetch from url", "extract content"]
     if any(w in p for w in scraping_words):
         return "scraping"
+
+    osint_words = ["investigate", "look up", "lookup", "research", "who is", "what is",
+                   "check ip", "check phone", "check domain", "osint", "intel on",
+                   "find info about", "trace", "recon", "profile of"]
+    if any(w in p for w in osint_words):
+        return "osint"
 
     return "ask"
 

@@ -8,6 +8,7 @@ TOOLS = {
     "search": "Search live web. Use for: latest/new/recent/current/today/2024/2025 queries, prices, news, any tool or product released recently. ALWAYS prefer over ask for anything that could have changed in last 6 months.",
     "image":  "Generate an image from a text description.",
     "deploy": "Write and run Python automation script via GitHub Actions. Use for scraping, monitoring, form filling.",
+    "osint": "Gather public intelligence on IP, phone, domain, company, or username. Use for: investigate/lookup/research/check/who is/what is [company/domain/IP/username/phone]. Always legal — public data only.",
     "ask":    "Answer using LLM reasoning. Use ONLY for timeless topics: math, theory, stable concepts. NEVER for recent events.",
 }
 
@@ -157,6 +158,30 @@ def phase_analyze(parse_result: dict, query: str, agent_log: list) -> dict:
     # Hard override: force search for live data queries
     intent_lower = parse_result.get("intent", query).lower()
     keywords = parse_result.get("keywords", [])
+    # OSINT force — check before search override
+    force_osint = any(w in intent_lower for w in [
+        "investigate", "lookup", "look up", "research", "who is", "what is",
+        "check ip", "check phone", "check domain", "check username",
+        "osint", "intel on", "intelligence on", "find info", "gather info",
+        "track", "trace", "recon", "reconnaissance"
+    ])
+    if force_osint and result.get("tool_plan", [{}])[0].get("tool") not in ["osint"]:
+        # Detect what type of osint
+        import re
+        osint_type = "company"  # default
+        osint_query = query
+        if re.search(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', query):
+            osint_type = "ip"
+        elif re.search(r'\+\d{7,15}', query.replace(" ","").replace("-","")):
+            osint_type = "phone"
+        elif re.search(r'\b[a-zA-Z0-9][a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}\b', query) and "/" not in query:
+            osint_type = "domain"
+        elif any(w in intent_lower for w in ["username", "profile", "account", "handle", "@"]):
+            osint_type = "username"
+        print(f"[ANALYZE] forcing osint/{osint_type} for: {intent_lower[:60]}")
+        result["tool_plan"] = [{"tool": "osint", "input": json.dumps({"type": osint_type, "query": osint_query}), "reason": "forced_osint"}]
+        result["query_type"] = f"osint_{osint_type}"
+
     force_search = any(w in intent_lower for w in [
         "latest", "recent", "current", "today", "news", "price",
         "live", "now", "2024", "2025", "2026", "trending"
@@ -230,7 +255,7 @@ def phase_route(analyze_result: dict, parse_result: dict, query: str, router, ag
     }
 
 def _agent_name(tool: str) -> str:
-    return {"jina":"Jina","search":"Search","image":"HuggingFace","deploy":"GitHub Actions","ask":"Cerebras"}.get(tool, tool.title())
+    return {"jina":"Jina","search":"Search","image":"HuggingFace","deploy":"GitHub Actions","ask":"Cerebras","osint":"OSINT"}.get(tool, tool.title())
 
 def _execute_tool(tool: str, tool_input: str, router, difficulty: str, agent_log: list) -> str:
     try:
@@ -249,6 +274,38 @@ def _execute_tool(tool: str, tool_input: str, router, difficulty: str, agent_log
             if "image_b64" in result:
                 return f"__IMAGE__data:image/jpeg;base64,{result['image_b64']}"
             return f"__IMAGE__{result.get('image_url', '')}"
+        elif tool == "osint":
+            import json as _json
+            try:
+                params = _json.loads(tool_input) if tool_input.startswith("{") else {"type": "company", "query": tool_input}
+            except:
+                params = {"type": "company", "query": tool_input}
+            from osint.dispatcher import dispatch
+            osint_result = dispatch(params.get("type","company"), params.get("query", tool_input))
+            if osint_result.get("legal_block"):
+                return f"OSINT blocked: {osint_result.get('error','')}"
+            # Format result as readable text for LLM
+            lines = [f"OSINT INTELLIGENCE — {params.get('type','').upper()} · {params.get('query','')}"]
+            lines.append("=" * 50)
+            skip = {"query_type","query","cached","legal_note","source","arjun_note"}
+            for k, v in osint_result.items():
+                if k in skip:
+                    continue
+                if isinstance(v, list):
+                    if v:
+                        lines.append(f"{k.upper()}: {', '.join(str(x) for x in v[:5])}")
+                elif isinstance(v, dict):
+                    for dk, dv in v.items():
+                        if dv:
+                            lines.append(f"{dk}: {dv}")
+                elif v is not None:
+                    lines.append(f"{k.upper()}: {v}")
+            if osint_result.get("legal_note"):
+                lines.append(f"LEGAL: {osint_result['legal_note']}")
+            if osint_result.get("arjun_note"):
+                lines.append(f"TRADING NOTE: {osint_result['arjun_note']}")
+            return "\n".join(lines)
+
         elif tool == "deploy":
             return f"__DEPLOY__{tool_input}"
         elif tool == "ask":
