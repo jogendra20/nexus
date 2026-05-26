@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 GROQ_KEY = os.getenv("GROQ_KEY", "")
+OPENROUTER_KEY = os.getenv("OPENROUTER_KEY", "")
 
 PLAN_SYSTEM_PROMPT = """You are a task planner for a personal AI assistant.
 Given a goal, break it into 2-5 concrete steps.
