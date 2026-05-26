@@ -742,7 +742,7 @@ def plan():
         return jsonify({"error": "goal required"}), 400
 
     from planner import plan_goal, save_task
-    steps = plan_goal(goal)
+    steps = plan_goal(goal, router)
     if not steps:
         return jsonify({"error": "Could not generate steps"}), 500
 

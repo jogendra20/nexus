@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-CEREBRAS_KEY = os.getenv("CEREBRAS_KEY", "")
 
 PLAN_SYSTEM_PROMPT = """You are a task planner for a personal AI assistant.
 Given a goal, break it into 2-5 concrete steps.
@@ -34,35 +33,12 @@ def _headers():
     }
 
 
-def plan_goal(goal: str) -> list:
-    """Use Cerebras to break a goal into steps."""
-    cerebras_key = os.getenv("CEREBRAS_KEY", "")
-    if not cerebras_key:
-        print("[Planner] No CEREBRAS_KEY found")
-        return []
-
-    payload = json.dumps({
-        "model": "llama-3.3-70b",
-        "messages": [
-            {"role": "system", "content": PLAN_SYSTEM_PROMPT},
-            {"role": "user", "content": goal}
-        ],
-        "max_tokens": 500,
-        "temperature": 0.2
-    }).encode()
-
-    req = urllib.request.Request(
-        "https://api.cerebras.ai/v1/chat/completions",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {cerebras_key}",
-            "Content-Type": "application/json"
-        }
-    )
+def plan_goal(goal: str, router) -> list:
+    """Use Nexus router to break a goal into steps."""
+    prompt = PLAN_SYSTEM_PROMPT + f"\n\nGoal: {goal}"
     try:
-        res = urllib.request.urlopen(req, timeout=15)
-        data = json.loads(res.read())
-        text = data["choices"][0]["message"]["content"].strip()
+        result = router.ask(prompt, task="reasoning", difficulty="medium")
+        text = result.get("response", "").strip()
         text = text.replace("```json", "").replace("```", "").strip()
         start = text.find("[")
         end = text.rfind("]") + 1
@@ -72,12 +48,11 @@ def plan_goal(goal: str) -> list:
         steps = json.loads(text[start:end])
         return steps if isinstance(steps, list) else []
     except Exception as e:
-        print(f"[Planner] Cerebras failed: {e}")
+        print(f"[Planner] plan_goal failed: {e}")
         return []
 
 
 def save_task(goal: str, steps: list, schedule: str) -> str:
-    """Save a scheduled task to Supabase. Returns task id."""
     payload = json.dumps({
         "goal": goal,
         "steps": steps,
@@ -102,7 +77,6 @@ def save_task(goal: str, steps: list, schedule: str) -> str:
 
 
 def get_active_tasks() -> list:
-    """Fetch all active scheduled tasks."""
     url = f"{SUPABASE_URL}/rest/v1/scheduled_tasks?status=eq.active&select=*"
     req = urllib.request.Request(url, headers={
         "apikey": SUPABASE_KEY,
@@ -118,7 +92,6 @@ def get_active_tasks() -> list:
 
 def save_run(task_id: str, step_index: int, step_name: str,
              status: str, output: str = "", error: str = "") -> str:
-    """Log one step execution to task_runs. Returns run id."""
     payload = json.dumps({
         "task_id": task_id,
         "step_index": step_index,
@@ -145,7 +118,6 @@ def save_run(task_id: str, step_index: int, step_name: str,
 
 
 def get_runs(task_id: str) -> list:
-    """Get all runs for a task, ordered by step."""
     url = f"{SUPABASE_URL}/rest/v1/task_runs?task_id=eq.{task_id}&order=step_index.asc&select=*"
     req = urllib.request.Request(url, headers={
         "apikey": SUPABASE_KEY,
