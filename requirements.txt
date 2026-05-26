@@ -7,3 +7,4 @@ supabase
 uvicorn
 gunicorn
 supabase
+phonenumbers
