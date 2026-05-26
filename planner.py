@@ -5,8 +5,7 @@ from datetime import datetime, timezone
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-GROQ_KEY = os.getenv("GROQ_KEY", "")
-OPENROUTER_KEY = os.getenv("OPENROUTER_KEY", "")
+CEREBRAS_KEY = os.getenv("CEREBRAS_KEY", "")
 
 PLAN_SYSTEM_PROMPT = """You are a task planner for a personal AI assistant.
 Given a goal, break it into 2-5 concrete steps.
@@ -36,12 +35,14 @@ def _headers():
 
 
 def plan_goal(goal: str) -> list:
-    """Use Groq to break a goal into steps."""
-    if not GROQ_KEY:
+    """Use Cerebras to break a goal into steps."""
+    cerebras_key = os.getenv("CEREBRAS_KEY", "")
+    if not cerebras_key:
+        print("[Planner] No CEREBRAS_KEY found")
         return []
 
     payload = json.dumps({
-        "model": "llama-3.1-8b-instant",
+        "model": "llama-3.3-70b",
         "messages": [
             {"role": "system", "content": PLAN_SYSTEM_PROMPT},
             {"role": "user", "content": goal}
@@ -51,22 +52,27 @@ def plan_goal(goal: str) -> list:
     }).encode()
 
     req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://api.cerebras.ai/v1/chat/completions",
         data=payload,
         headers={
-            "Authorization": f"Bearer {GROQ_KEY}",
+            "Authorization": f"Bearer {cerebras_key}",
             "Content-Type": "application/json"
         }
     )
     try:
-        res = urllib.request.urlopen(req, timeout=10)
+        res = urllib.request.urlopen(req, timeout=15)
         data = json.loads(res.read())
         text = data["choices"][0]["message"]["content"].strip()
         text = text.replace("```json", "").replace("```", "").strip()
-        steps = json.loads(text)
+        start = text.find("[")
+        end = text.rfind("]") + 1
+        if start == -1 or end == 0:
+            print(f"[Planner] No JSON array found in: {text[:200]}")
+            return []
+        steps = json.loads(text[start:end])
         return steps if isinstance(steps, list) else []
     except Exception as e:
-        print(f"[Planner] Groq failed: {e}")
+        print(f"[Planner] Cerebras failed: {e}")
         return []
 
 
