@@ -684,6 +684,46 @@ def osint():
 
     return jsonify(result)
 
+
+@app.route("/debug-plan", methods=["POST"])
+def debug_plan():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    goal = data.get("goal", "").strip()
+    import json, urllib.request
+    groq_key = os.getenv("GROQ_KEY", "")
+    PLAN_SYSTEM_PROMPT = """You are a task planner for a personal AI assistant.
+Given a goal, break it into 2-5 concrete steps.
+Each step must have:
+- name: short label
+- type: one of [search, scraping, automation, reasoning, notify]
+- prompt: exact instruction for that step
+- depends_on: index of step this depends on (-1 if none)
+
+Return ONLY a JSON array. No explanation. No markdown."""
+    payload = json.dumps({
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": PLAN_SYSTEM_PROMPT},
+            {"role": "user", "content": goal}
+        ],
+        "max_tokens": 500,
+        "temperature": 0.2
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.groq.com/openai/v1/chat/completions",
+        data=payload,
+        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+    )
+    try:
+        res = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(res.read())
+        raw = data["choices"][0]["message"]["content"].strip()
+        return jsonify({"raw": raw})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
 
