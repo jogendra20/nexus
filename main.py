@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from datetime import datetime
 from router import Router
 from auth import auth_required
 import os
@@ -686,3 +687,129 @@ def osint():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
 
+
+
+# ── Task Planner endpoints ─────────────────────────────────────────
+
+@app.route("/plan", methods=["POST"])
+def plan():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    goal = data.get("goal", "").strip()
+    schedule = data.get("schedule", "manual")
+    if not goal:
+        return jsonify({"error": "goal required"}), 400
+
+    from planner import plan_goal, save_task
+    steps = plan_goal(goal)
+    if not steps:
+        return jsonify({"error": "Could not generate steps"}), 500
+
+    task_id = save_task(goal, steps, schedule)
+    return jsonify({
+        "task_id": task_id,
+        "goal": goal,
+        "steps": steps,
+        "schedule": schedule
+    })
+
+
+@app.route("/run-task", methods=["POST"])
+def run_task():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    task_id = data.get("task_id", "")
+    if not task_id:
+        return jsonify({"error": "task_id required"}), 400
+
+    from planner import get_active_tasks, save_run, get_runs
+
+    # Find the task
+    tasks = get_active_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        return jsonify({"error": "Task not found or inactive"}), 404
+
+    steps = task["steps"]
+    previous_runs = get_runs(task_id)
+    completed = {r["step_index"]: r["output"] for r in previous_runs if r["status"] == "done"}
+
+    results = []
+
+    for i, step in enumerate(steps):
+        # Skip already completed steps
+        if i in completed:
+            results.append({"step": i, "name": step["name"], "status": "skipped", "output": completed[i]})
+            continue
+
+        # Check dependency
+        depends_on = step.get("depends_on", -1)
+        if depends_on != -1 and depends_on not in completed:
+            save_run(task_id, i, step["name"], "blocked", error="dependency not met")
+            results.append({"step": i, "name": step["name"], "status": "blocked"})
+            continue
+
+        # Inject previous step output into prompt if referenced
+        prompt = step["prompt"]
+        if depends_on != -1 and depends_on in completed:
+            prompt = prompt.replace(f"{{step_{depends_on}_output}}", completed[depends_on])
+
+        # Notify step — send to Telegram directly
+        if step["type"] == "notify":
+            token = os.getenv("TELEGRAM_BOT_TOKEN")
+            chat_id = os.getenv("TELEGRAM_CHAT_ID")
+            msg = prompt
+            # Use last completed output as message if prompt is generic
+            if "send" in prompt.lower() and completed:
+                last = max(completed.keys())
+                msg = f"Task: {task['goal']}\n\n{completed[last]}"
+            if token and chat_id:
+                import requests as req
+                req.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": msg[:4000]},
+                    timeout=10
+                )
+            output = "notified"
+            completed[i] = output
+            save_run(task_id, i, step["name"], "done", output=output)
+            results.append({"step": i, "name": step["name"], "status": "done", "output": output})
+            continue
+
+        # All other step types — route through Nexus
+        try:
+            result = router.ask(prompt, task=step["type"])
+            output = result.get("response", "")
+            if not output or "All providers exhausted" in output:
+                save_run(task_id, i, step["name"], "failed", error="provider exhausted")
+                results.append({"step": i, "name": step["name"], "status": "failed"})
+                continue
+            completed[i] = output
+            save_run(task_id, i, step["name"], "done", output=output)
+            results.append({"step": i, "name": step["name"], "status": "done", "output": output[:300]})
+        except Exception as e:
+            save_run(task_id, i, step["name"], "failed", error=str(e))
+            results.append({"step": i, "name": step["name"], "status": "failed", "error": str(e)})
+
+    # Update last_run on task
+    import urllib.request as _ur
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
+    _ur.urlopen(
+        _ur.Request(
+            f"{sb_url}/rest/v1/scheduled_tasks?id=eq.{task_id}",
+            data=json.dumps({"last_run": datetime.utcnow().isoformat()}).encode(),
+            headers={
+                "apikey": sb_key,
+                "Authorization": f"Bearer {sb_key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal"
+            },
+            method="PATCH"
+        ),
+        timeout=8
+    )
+
+    return jsonify({"task_id": task_id, "results": results})
