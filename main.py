@@ -6,7 +6,9 @@ import os
 import requests
 import base64
 
+from flask_cors import CORS
 app = Flask(__name__)
+CORS(app, origins=["https://*.vercel.app", "http://localhost:3000"])
 router = Router()
 
 import threading, time as _time
