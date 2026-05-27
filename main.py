@@ -724,6 +724,15 @@ Return ONLY a JSON array. No explanation. No markdown."""
     except Exception as e:
         return jsonify({"error": str(e)})
 
+
+@app.route("/tasks", methods=["GET"])
+def get_tasks():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    from planner import get_active_tasks
+    tasks = get_active_tasks()
+    return jsonify(tasks)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
 
