@@ -840,7 +840,7 @@ def run_task():
     _ur.urlopen(
         _ur.Request(
             f"{sb_url}/rest/v1/scheduled_tasks?id=eq.{task_id}",
-            data=json.dumps({"last_run": datetime.utcnow().isoformat()}).encode(),
+            data=_json.dumps({"last_run": datetime.utcnow().isoformat()}).encode(),
             headers={
                 "apikey": sb_key,
                 "Authorization": f"Bearer {sb_key}",
