@@ -774,12 +774,44 @@ def run_task():
         return jsonify({"error": "task_id required"}), 400
 
     from planner import get_active_tasks, save_run, get_runs
+    import urllib.request as _ur2
 
     # Find the task
     tasks = get_active_tasks()
     task = next((t for t in tasks if t["id"] == task_id), None)
     if not task:
         return jsonify({"error": "Task not found or inactive"}), 404
+
+    # Reset completed runs if task is recurring and last_run was not today
+    sb_url = os.getenv("SUPABASE_URL", "")
+    sb_key = os.getenv("SUPABASE_KEY", "")
+    last_run = task.get("last_run")
+    should_reset = False
+    if last_run:
+        from datetime import date
+        last_run_date = last_run[:10]
+        today = date.today().isoformat()
+        if last_run_date < today:
+            should_reset = True
+    else:
+        should_reset = True
+
+    if should_reset:
+        try:
+            _ur2.urlopen(
+                _ur2.Request(
+                    f"{sb_url}/rest/v1/task_runs?task_id=eq.{task_id}",
+                    headers={
+                        "apikey": sb_key,
+                        "Authorization": f"Bearer {sb_key}",
+                        "Content-Type": "application/json"
+                    },
+                    method="DELETE"
+                ),
+                timeout=8
+            )
+        except Exception as e:
+            print(f"[run-task] reset failed: {e}")
 
     steps = task["steps"]
     previous_runs = get_runs(task_id)
