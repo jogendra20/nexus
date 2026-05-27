@@ -733,6 +733,32 @@ def get_tasks():
     tasks = get_active_tasks()
     return jsonify(tasks)
 
+
+@app.route("/profile", methods=["GET"])
+def get_profile_endpoint():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    from profile import get_profile, get_context_string
+    return jsonify({
+        "profile": get_profile(),
+        "context": get_context_string()
+    })
+
+
+@app.route("/profile", methods=["POST"])
+def update_profile_endpoint():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.json
+    key = data.get("key", "")
+    value = data.get("value", "")
+    category = data.get("category", "personal")
+    if not key or not value:
+        return jsonify({"error": "key and value required"}), 400
+    from profile import update_profile
+    ok = update_profile(key, value, category)
+    return jsonify({"updated": ok})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8003, debug=True)
 
@@ -834,6 +860,11 @@ def run_task():
 
         # Inject previous step output into prompt if referenced
         prompt = step["prompt"]
+        # Inject user context
+        from profile import get_context_string
+        ctx = get_context_string()
+        if ctx:
+            prompt = ctx + "\n\n" + prompt
         if depends_on != -1 and depends_on in completed:
             prompt = prompt.replace(f"{{step_{depends_on}_output}}", completed[depends_on])
 
