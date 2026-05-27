@@ -47,7 +47,24 @@ def ask():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    result = router.ask(data["prompt"], data.get("task"), data.get("difficulty", "easy"))
+    prompt = data.get("prompt", "")
+    skip_clarify = data.get("skip_clarify", False)
+
+    if not skip_clarify:
+        from clarifier import analyze_prompt
+        analysis = analyze_prompt(prompt, router)
+        if analysis["action"] == "clarify":
+            return jsonify({
+                "clarify": True,
+                "question": analysis["result"],
+                "original_prompt": prompt
+            })
+        elif analysis["action"] == "enhance":
+            prompt = analysis["result"]
+
+    result = router.ask(prompt, data.get("task"), data.get("difficulty", "easy"))
+    result["original_prompt"] = data.get("prompt", "")
+    result["enhanced"] = prompt != data.get("prompt", "")
     return jsonify(result)
 
 @app.route("/search", methods=["POST"])
