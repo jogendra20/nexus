@@ -178,3 +178,19 @@ For access or collaboration: open an issue or reach out via GitHub.
 ---
 
 *NEXUS — One API to route them all.*
+
+## Provider health doctor
+
+Run the configuration inventory without making provider calls:
+
+```bash
+python doctor.py
+```
+
+Run one small health request for each configured provider. This consumes provider quota, so use it sparingly:
+
+```bash
+python doctor.py --live --json
+```
+
+The doctor reports configuration-missing, authentication, quota, model/endpoint, network, and provider failures without printing API keys or model responses.
