@@ -5,6 +5,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn main:app --bind 0.0.0.0:$PORT
     envVars:
+      - key: NEXUS_SECRET
+        sync: false
       - key: GEMINI_KEY
         sync: false
       - key: OPENROUTER_KEY
@@ -15,7 +17,31 @@ services:
         sync: false
       - key: DRONA_PASSWORD
         sync: false
-      - key: POE_TOKEN
+      - key: POE_API_KEY
+        sync: false
+      - key: PERPLEXITY_TOKEN
+        sync: false
+      - key: NVIDIA_KEY
+        sync: false
+      - key: CEREBRAS_KEY
+        sync: false
+      - key: MISTRAL_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      - key: JINA_API_KEY
+        sync: false
+      - key: TAVILY_KEY_1
+        sync: false
+      - key: TAVILY_KEY_2
+        sync: false
+      - key: SERPER_KEY_1
+        sync: false
+      - key: SERPER_KEY_2
+        sync: false
+      - key: YOUCOM_KEY_1
+        sync: false
+      - key: YOUCOM_KEY_2
         sync: false
       - key: SUPABASE_URL
         sync: false

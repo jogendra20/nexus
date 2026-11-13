@@ -5,10 +5,10 @@ class NvidiaProvider:
     URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
     MODELS = {
-        "default":   "meta/llama-3.3-70b-instruct",
-        "coding":    "deepseek-ai/deepseek-v4-flash",
+        "default":   "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "coding":    "deepseek-ai/deepseek-v4.1-flash",
         "reasoning": "openai/gpt-oss-120b",
-        "fast":      "meta/llama-3.1-8b-instruct",
+        "fast":      "nvidia/nemotron-3.5-lightning-30b-a3b",
         "premium":   "openai/gpt-oss-120b",
     }
 

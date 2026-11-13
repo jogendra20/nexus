@@ -4,12 +4,12 @@ from config import GEMINI_KEY
 
 class GeminiProvider:
     MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
 ]
 
     def ask(self, prompt: str) -> str:
+        last_error = None
         for model in self.MODELS:
             try:
                 r = requests.post(
@@ -25,13 +25,14 @@ class GeminiProvider:
                 return r.json()["candidates"][0]["content"]["parts"][0]["text"]
             except Exception as e:
                 print(f"⚠️ Gemini {model} failed: {e}")
+                last_error = e
                 continue
-        raise Exception("All Gemini models failed")
+        raise last_error or Exception("All Gemini models failed")
 
     def generate_image(self, prompt: str) -> dict:
         try:
             r = requests.post(
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent",
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent",
                 headers={
                     "x-goog-api-key": GEMINI_KEY,
                     "Content-Type": "application/json"
@@ -49,7 +50,7 @@ class GeminiProvider:
                     return {
                         "image_b64": part["inlineData"]["data"],
                         "provider": "gemini",
-                        "model": "gemini-2.0-flash-exp",
+                        "model": "gemini-3.1-flash-image",
                     }
             raise Exception("No image in response")
         except Exception as e:

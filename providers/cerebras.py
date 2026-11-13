@@ -5,9 +5,9 @@ class CerebrasProvider:
     URL = "https://api.cerebras.ai/v1/chat/completions"
 
     MODELS = {
-        "default": "llama-3.1-8b",
-        "fast":    "llama-3.1-8b",
-        "premium": "llama-3.3-70b",
+        "default": "gpt-oss-120b",
+        "fast":    "qwen-3.8-27b",
+        "premium": "gpt-oss-120b",
     }
 
     def ask(self, prompt: str, task: str = "default") -> str:

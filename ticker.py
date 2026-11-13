@@ -14,7 +14,7 @@ SYMBOLS = {
 
 def fetch_quote(symbol: str) -> dict | None:
     # Try query2 first, fall back to query1
-    for base in ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"\]:
+    for base in ["https://query2.finance.yahoo.com", "https://query1.finance.yahoo.com"]:
         url = f"{base}/v8/finance/chart/{symbol}?interval=1m&range=1d"
         req = urllib.request.Request(url, headers={
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

@@ -24,7 +24,7 @@ CHECKS: list[tuple[str, str, Callable[[], object]]] = []
 
 def _category(exc: Exception) -> str:
     text = str(exc).lower()
-    match = re.search(r"\b(401|403|404|408|409|429|5\d\d)\b", text)
+    match = re.search(r"\b(401|402|403|404|408|409|429|5\d\d)\b", text)
     if match:
         code = int(match.group(1))
         if code in (401, 403):
@@ -33,6 +33,8 @@ def _category(exc: Exception) -> str:
             return "model_or_endpoint_not_found"
         if code == 429:
             return "rate_limited_or_quota_exhausted"
+        if code == 402:
+            return "billing_or_credits_required"
         if code >= 500:
             return "provider_server_error"
         return f"http_{code}"
@@ -109,6 +111,9 @@ def main() -> int:
 
     results = []
     for name, env_name, fn in build_checks():
+        if name == "github_models":
+            results.append({"provider": name, "credential": env_name, "configured": bool(os.getenv(env_name, "").strip()), "status": "retired"})
+            continue
         if env_name == "SEARCH_PROVIDER_KEYS":
             env_name = "TAVILY_KEY_1/SERPER_KEY_1/YOUCOM_KEY_1"
             configured = any(os.getenv(k, "").strip() for k in ("TAVILY_KEY_1", "TAVILY_KEY_2", "SERPER_KEY_1", "SERPER_KEY_2", "YOUCOM_KEY_1", "YOUCOM_KEY_2"))

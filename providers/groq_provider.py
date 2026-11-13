@@ -9,8 +9,8 @@ class GroqProvider:
     URL = "https://api.groq.com/openai/v1/chat/completions"
 
     MODELS = {
-    "coding":  "llama-3.3-70b-versatile",
-    "default": "llama-3.1-8b-instant",
+    "coding":  "openai/gpt-oss-120b",
+    "default": "openai/gpt-oss-20b",
 }
 
     def ask(self, prompt: str, task: str = "default") -> str:

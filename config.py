@@ -3,16 +3,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GEMINI_KEY      = os.getenv("GEMINI_KEY")
-OPENROUTER_KEY  = os.getenv("OPENROUTER_KEY")
-POE_TOKEN       = os.getenv("POE_TOKEN")
+GEMINI_KEY      = os.getenv("GEMINI_KEY") or os.getenv("GEMINI_API_KEY")
+OPENROUTER_KEY  = os.getenv("OPENROUTER_KEY") or os.getenv("OPENROUTER_API_KEY")
+POE_TOKEN       = os.getenv("POE_TOKEN") or os.getenv("POE_API_KEY")
 SUPABASE_URL    = os.getenv("SUPABASE_URL")
 SUPABASE_KEY    = os.getenv("SUPABASE_KEY")
-GROQ_KEY    = os.getenv("GROQ_KEY")
+GROQ_KEY    = os.getenv("GROQ_KEY") or os.getenv("GROQ_API_KEY")
 DRONA_URL   = os.getenv("DRONA_URL")  # your Render URL
 DRONA_PASSWORD = os.getenv("DRONA_PASSWORD")
 PERPLEXITY_TOKEN = os.getenv("PERPLEXITY_TOKEN")
-POE_API_KEY = os.getenv("POE_API_KEY")
+POE_API_KEY = os.getenv("POE_API_KEY") or os.getenv("POE_TOKEN")
 NVIDIA_KEY = os.getenv("NVIDIA_KEY")
 CEREBRAS_KEY = os.getenv("CEREBRAS_KEY")
 MISTRAL_KEY  = os.getenv("MISTRAL_KEY")
@@ -22,13 +22,13 @@ JINA_API_KEY      = os.getenv("JINA_API_KEY")
 
 TASK_ROUTES = {
     "search":    ["search", "gemini", "groq"],
-    "coding":    ["github_models", "nvidia", "mistral", "openrouter", "gemini"],
+    "coding":    ["nvidia", "mistral", "openrouter", "gemini", "groq"],
     "trading":   ["cerebras", "groq", "gemini", "nvidia"],
-    "reasoning": ["github_models", "nvidia", "gemini", "openrouter", "groq"],
-    "premium":   ["github_models", "nvidia", "gemini", "openrouter"],
-    "automation": ["github_models", "groq", "cerebras", "openrouter", "mistral"],
+    "reasoning": ["nvidia", "gemini", "openrouter", "groq", "cerebras"],
+    "premium":   ["nvidia", "gemini", "openrouter", "groq"],
+    "automation": ["groq", "cerebras", "openrouter", "mistral", "nvidia"],
     "scraping":   ["jina"],  # always goes to Jina, no LLM fallback for fetching
-    "default":   ["cerebras", "gemini", "github_models", "nvidia", "huggingface", "openrouter", "groq"],
+    "default":   ["cerebras", "gemini", "nvidia", "openrouter", "groq"],
 } 
 
 LIMITS = {
