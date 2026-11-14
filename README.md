@@ -1,3 +1,4 @@
+> Endpoint list: see API.md (the API section below is outdated).
 # NEXUS ⚡
 ### Unified AI Aggregation Layer — Production Deployed
 
