@@ -98,6 +98,11 @@ def image():
 
 @app.route("/telegram", methods=["POST"])
 def telegram_webhook():
+    import hmac
+    expected = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    got = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not expected or not hmac.compare_digest(got.encode(), expected.encode()):
+        return "forbidden", 403
     from telegram_bot import handle_update
     update = request.json
     handle_update(update)
@@ -138,39 +143,99 @@ def deploy():
             last_code_line = i
     code = "\n".join(lines[:last_code_line + 1]).strip()
 
-    # Step 2: Push to GitHub
-    from github_pusher import push_script, trigger_workflow
-    push_result = push_script(code, filename)
+    # Step 2: queue for approval. Nothing is pushed or run until you approve.
+    from deploy_queue import create as _queue_create
+    try:
+        row = _queue_create(code=code, prompt=prompt, filename=filename, task=task,
+                            difficulty=difficulty, provider=provider, source="deploy")
+    except Exception as e:
+        print(f"[Deploy] approval queue failed: {e}")
+        return jsonify({"error": "Approval queue unavailable"}), 503
+    _tg_notify(f"Deploy pending approval\nProvider: {provider}\nPrompt: {prompt[:120]}\n\nApprove or reject in the dashboard.")
+    return jsonify({"pending": True, "id": row["id"], "code": code, "provider": provider})
 
-    if not push_result["success"]:
-        return jsonify({"error": "Push failed", "detail": push_result}), 500
 
-    # Step 3: Trigger workflow
-    trigger_result = trigger_workflow(push_result["filename"], prompt[:100], difficulty, provider)
-
-    # Step 4: Notify Telegram
-    import os, requests as req
-    token   = os.getenv("TELEGRAM_BOT_TOKEN")
+def _tg_notify(text, parse_mode=None):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if token and chat_id:
-        status = "✅ triggered" if trigger_result["success"] else "⚠️ push ok, trigger failed"
-        req.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": f"🤖 *Nexus Automation*\n\n`{push_result['filename']}`\nProvider: {provider}\nStatus: {status}\n\n[View file]({push_result['url']})",
-                "parse_mode": "Markdown"
-            }
-        )
+    if not (token and chat_id):
+        return
+    payload = {"chat_id": chat_id, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
+    try:
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=payload, timeout=10)
+    except Exception as e:
+        print(f"[Telegram] notify failed: {e}")
 
-    run_id = trigger_result.get("run_id") or push_result["filename"].replace("scripts/","").replace(".py","")
-    return jsonify({
-        "code": code,
-        "provider": provider,
-        "file": push_result["filename"],
-        "triggered": trigger_result["success"],
-        "run_id": run_id,
-    })
+
+def _publish_row(row):
+    from github_pusher import push_script, trigger_workflow
+    push_result = push_script(row["code"], row.get("filename"))
+    if not push_result["success"]:
+        return {"ok": False, "error": "Push failed", "detail": push_result}
+    trigger_result = trigger_workflow(push_result["filename"], (row.get("prompt") or "")[:100],
+                                      row.get("difficulty") or "easy", row.get("provider") or "unknown")
+    run_id = trigger_result.get("run_id") or push_result["filename"].replace("scripts/", "").replace(".py", "")
+    status = "✅ triggered" if trigger_result["success"] else "⚠️ push ok, trigger failed"
+    _tg_notify(f"🤖 *Nexus Automation*\n\n`{push_result['filename']}`\nProvider: {row.get('provider')}\nStatus: {status}\n\n[View file]({push_result['url']})", "Markdown")
+    return {"ok": True, "file": push_result["filename"], "triggered": trigger_result["success"], "run_id": run_id}
+
+
+@app.route("/pending-deploys", methods=["GET"])
+def pending_deploys():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    from deploy_queue import list_pending
+    try:
+        return jsonify({"pending": list_pending()})
+    except Exception as e:
+        print(f"[Deploy] list failed: {e}")
+        return jsonify({"error": "Approval queue unavailable"}), 503
+
+
+@app.route("/approve-deploy", methods=["POST"])
+def approve_deploy():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    dep_id = (request.get_json(silent=True) or {}).get("id", "")
+    from deploy_queue import claim, update
+    try:
+        row = claim(dep_id, "approved")
+    except ValueError:
+        return jsonify({"error": "invalid id"}), 400
+    except Exception as e:
+        print(f"[Deploy] claim failed: {e}")
+        return jsonify({"error": "Approval queue unavailable"}), 503
+    if not row:
+        return jsonify({"error": "Not pending, expired, or already decided"}), 409
+    result = _publish_row(row)
+    try:
+        update(dep_id, {"status": "approved" if result["ok"] else "failed", "run_id": result.get("run_id")})
+    except Exception as e:
+        print(f"[Deploy] status update failed: {e}")
+    if not result["ok"]:
+        return jsonify({"error": result["error"], "detail": result.get("detail")}), 502
+    return jsonify(result)
+
+
+@app.route("/reject-deploy", methods=["POST"])
+def reject_deploy():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
+    dep_id = (request.get_json(silent=True) or {}).get("id", "")
+    from deploy_queue import claim
+    try:
+        row = claim(dep_id, "rejected")
+    except ValueError:
+        return jsonify({"error": "invalid id"}), 400
+    except Exception as e:
+        print(f"[Deploy] reject failed: {e}")
+        return jsonify({"error": "Approval queue unavailable"}), 503
+    if not row:
+        return jsonify({"error": "Not pending, expired, or already decided"}), 409
+    return jsonify({"rejected": True})
+
 
 @app.route("/delete-script", methods=["POST"])
 def delete_script():
@@ -368,34 +433,16 @@ Rules:
     import re
     fixed_code = re.sub(r"^```(?:python)?\n?|```$", "", fixed_code, flags=re.MULTILINE).strip()
 
-    from github_pusher import push_script, trigger_workflow
-    push_result = push_script(fixed_code, None)
+    from deploy_queue import create as _queue_create
+    try:
+        row = _queue_create(code=fixed_code, prompt=f"[RETRY] {prompt[:80]}", filename=None,
+                            task="automation", difficulty="medium", provider=provider, source="fix")
+    except Exception as e:
+        print(f"[Fix] approval queue failed: {e}")
+        return jsonify({"error": "Approval queue unavailable"}), 503
+    _tg_notify(f"Fix pending approval\nProvider: {provider}\n\nApprove or reject in the dashboard.")
+    return jsonify({"fixed": True, "pending": True, "id": row["id"], "code": fixed_code, "provider": provider})
 
-    if not push_result["success"]:
-        return jsonify({"error": "Push failed", "detail": push_result}), 500
-
-    trigger_result = trigger_workflow(push_result["filename"], f"[RETRY] {prompt[:80]}", "medium", provider)
-
-    import os, requests as req
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if token and chat_id:
-        status = "✅ retry triggered" if trigger_result["success"] else "⚠️ fix generated, trigger failed"
-        req.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": f"🔧 *Nexus Auto-Fix*\n\nProvider: {provider}\nStatus: {status}\n\n[View fixed script]({push_result['url']})",
-                "parse_mode": "Markdown"
-            }
-        )
-
-    return jsonify({
-        "fixed": True,
-        "provider": provider,
-        "file": push_result["filename"],
-        "triggered": trigger_result["success"]
-    })
 
 @app.route("/orchestrate", methods=["POST"])
 def orchestrate():
