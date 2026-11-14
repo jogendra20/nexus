@@ -42,6 +42,8 @@ def health():
 
 @app.route("/status", methods=["GET"])
 def status():
+    if not auth_required():
+        return jsonify({"error": "Unauthorized"}), 401
     return jsonify(router.status())
 
 @app.route("/ask", methods=["POST"])
@@ -672,13 +674,6 @@ def reject_skill():
     proposals.pop(domain, None)
     _save_proposals(proposals)
     return jsonify({"status": "rejected"})
-
-
-@app.route("/debug-env", methods=["GET"])
-def debug_env():
-    import os
-    key = os.getenv("GROQ_KEY", "MISSING")
-    return jsonify({"groq_key_length": len(key), "groq_key_prefix": key[:8] if key != "MISSING" else "MISSING"})
 
 
 # ── OSINT endpoint ────────────────────────────────────────────────

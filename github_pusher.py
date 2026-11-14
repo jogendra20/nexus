@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import base64
 import requests
@@ -9,6 +10,7 @@ GITHUB_OWNER = "jogendra20"
 GITHUB_REPO  = "Automate"
 BRANCH       = "main"
 BASE_URL     = f"https://api.github.com/repos/{GITHUB_OWNER}/{GITHUB_REPO}"
+_SAFE_PATH   = re.compile(r"^scripts/[A-Za-z0-9_-]+\.py$")
 
 HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -20,6 +22,8 @@ def push_script(code: str, filename: str = None) -> dict:
     if not filename:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"scripts/auto_{ts}.py"
+    if not _SAFE_PATH.match(filename):
+        return {"success": False, "error": "invalid script path"}
     sha = None
     check = requests.get(f"{BASE_URL}/contents/{filename}", headers=HEADERS)
     if check.status_code == 200:
@@ -35,6 +39,8 @@ def push_script(code: str, filename: str = None) -> dict:
         return {"success": False, "error": response.json()}
 
 def delete_file(filepath: str) -> dict:
+    if not _SAFE_PATH.match(filepath or ""):
+        return {"success": False, "error": "invalid script path"}
     check = requests.get(f"{BASE_URL}/contents/{filepath}", headers=HEADERS)
     if check.status_code != 200:
         return {"success": False, "error": "File not found"}
