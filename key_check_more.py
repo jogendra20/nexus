@@ -107,8 +107,25 @@ def _telegram():
 
 def _github():
     k = os.getenv("GITHUB_TOKEN")
-    return _wrap(_http("github", "token", k, "GET", "https://api.github.com/user",
-                       headers={"Authorization": f"Bearer {k}", "Accept": "application/vnd.github+json"}))
+    try:
+        from github_pusher import BASE_URL
+    except Exception:
+        BASE_URL = "https://api.github.com/user"
+    res = _http("github", "Automate repo", k, "GET", BASE_URL,
+                headers={"Authorization": f"Bearer {k}", "Accept": "application/vnd.github+json"})
+    if not isinstance(res, tuple):
+        return res
+    row, r = res
+    scopes = row["ratelimit"].get("x-oauth-scopes", "")
+    if row["status"] == "ok":
+        try:
+            row["ratelimit"]["push"] = str(r.json().get("permissions", {}).get("push"))
+        except Exception:
+            pass
+        if "admin:" in scopes or "delete_repo" in scopes:
+            row["status"] = "overscoped"
+            row["error"] = "classic token with admin/delete scopes - replace with a fine-grained token"
+    return row
 
 
 def _supabase_headers(k):
