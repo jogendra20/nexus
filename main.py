@@ -242,7 +242,13 @@ def check_keys_route():
     if not auth_required():
         return jsonify({"error": "Unauthorized"}), 401
     from key_check import run_checks, as_text
-    results = run_checks()
+    group = request.args.get("group", "llm")
+    results = []
+    if group in ("llm", "all"):
+        results += run_checks()
+    if group in ("other", "all"):
+        from key_check_more import run_more
+        results += run_more()
     if request.args.get("format") == "text":
         return as_text(results), 200, {"Content-Type": "text/plain; charset=utf-8"}
     return jsonify({"results": results})
