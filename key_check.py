@@ -54,7 +54,7 @@ def _targets():
         ("openrouter", OpenRouterProvider, ("OPENROUTER_KEY", "OPENROUTER_API_KEY"), 1),
     ]:
         key = next((os.getenv(e) for e in envs if os.getenv(e)), None)
-        extra = {"HTTP-Referer": "https://github.com/nexus"\} if name == "openrouter" else {}
+        extra = {"HTTP-Referer": "https://github.com/nexus"} if name == "openrouter" else {}
         for model in _uniq(cls.MODELS.values(), limit):
             t.append((name, cls.URL, key, model, extra))
 
