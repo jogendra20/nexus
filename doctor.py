@@ -71,17 +71,13 @@ def _safe_call(name: str, env_name: str, fn: Callable[[], object], live: bool) -
 def build_checks() -> list[tuple[str, str, Callable[[], object]]]:
     from providers.cerebras import CerebrasProvider
     from providers.duck import DuckProvider
-    from providers.drona import DronaProvider
     from providers.gemini import GeminiProvider
-    from providers.github_models import GitHubModelsProvider
     from providers.groq_provider import GroqProvider
     from providers.huggingface import HuggingFaceProvider
     from providers.jina import JinaProvider
     from providers.mistral import MistralProvider
     from providers.nvidia import NvidiaProvider
     from providers.openrouter import OpenRouterProvider
-    from providers.perplexity import PerplexityProvider
-    from providers.poe import PoeProvider
     from providers.search import SearchProvider
 
     prompt = "Reply with only the word OK."
@@ -91,12 +87,8 @@ def build_checks() -> list[tuple[str, str, Callable[[], object]]]:
         ("gemini", "GEMINI_KEY", lambda: GeminiProvider().ask(prompt)),
         ("nvidia", "NVIDIA_KEY", lambda: NvidiaProvider().ask(prompt, "default")),
         ("mistral", "MISTRAL_KEY", lambda: MistralProvider().ask(prompt, "default")),
-        ("github_models", "GITHUB_MODELS_KEY", lambda: GitHubModelsProvider().ask(prompt)),
         ("openrouter", "OPENROUTER_KEY", lambda: OpenRouterProvider().ask(prompt, "default")),
         ("huggingface", "HF_TOKEN", lambda: HuggingFaceProvider().ask(prompt)),
-        ("poe", "POE_API_KEY", lambda: PoeProvider().ask(prompt, "default")),
-        ("perplexity", "PERPLEXITY_TOKEN", lambda: PerplexityProvider().ask(prompt)),
-        ("drona", "DRONA_PASSWORD", lambda: DronaProvider().ask(prompt)),
         ("duck", "PUBLIC_SESSION", lambda: DuckProvider().ask(prompt, "default")),
         ("search", "SEARCH_PROVIDER_KEYS", lambda: SearchProvider().search("Nexus health check", max_results=1)),
         ("jina", "JINA_API_KEY", lambda: JinaProvider().fetch("https://example.com")),
@@ -111,9 +103,6 @@ def main() -> int:
 
     results = []
     for name, env_name, fn in build_checks():
-        if name == "github_models":
-            results.append({"provider": name, "credential": env_name, "configured": bool(os.getenv(env_name, "").strip()), "status": "retired"})
-            continue
         if env_name == "SEARCH_PROVIDER_KEYS":
             env_name = "TAVILY_KEY_1/SERPER_KEY_1/YOUCOM_KEY_1"
             configured = any(os.getenv(k, "").strip() for k in ("TAVILY_KEY_1", "TAVILY_KEY_2", "SERPER_KEY_1", "SERPER_KEY_2", "YOUCOM_KEY_1", "YOUCOM_KEY_2"))

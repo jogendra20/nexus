@@ -3,7 +3,6 @@ from scorer import get_score
 
 # Static quality scores per provider per task (0-10)
 '''QUALITY_SCORES = {
-    "github_models": {"reasoning": 10, "premium": 10, "coding": 9, "trading": 7, "search": 5, "default": 8},
     "nvidia":        {"reasoning": 9,  "premium": 9,  "coding": 8, "trading": 7, "search": 5, "default": 7},
     "cerebras":      {"reasoning": 6,  "premium": 5,  "coding": 6, "trading": 9, "search": 4, "default": 8},
     "gemini":        {"reasoning": 8,  "premium": 8,  "coding": 7, "trading": 8, "search": 8, "default": 8},
@@ -26,20 +25,18 @@ class Orchestrator:
         status = self.limiter.status()
         remaining = status.get(provider, 0)
         limits = {
-            "github_models": 15,
             "nvidia":        40,
             "cerebras":      30,
             "gemini":        60,
             "groq":          30,
             "mistral":       30,
             "openrouter":    20,
-            "drona":         100,
         }
         max_calls = limits.get(provider, 10)
         return min(remaining / max_calls, 1.0) * 10  # normalize to 0-10
 
     FAST_PROVIDERS    = {"groq", "cerebras"}
-    QUALITY_PROVIDERS = {"github_models", "gemini", "nvidia"}
+    QUALITY_PROVIDERS = {"gemini", "nvidia"}
 
     def difficulty_multiplier(self, provider: str, difficulty: str) -> float:
         if difficulty == "easy" and provider in self.FAST_PROVIDERS:
@@ -54,12 +51,6 @@ class Orchestrator:
         # Image tasks always go to huggingface
         if task == "image":
             return [{"provider": "huggingface", "quality": 10, "availability": 10, "final": 10}]
-
-        # Automation hard/medium always use github_models first
-        if task == "automation" and difficulty in ("medium", "hard"):
-            if self.limiter.check("github_models"):
-                rest = [p for p in providers if p != "github_models"]
-                return [{"provider": "github_models", "quality": 10, "availability": 10, "final": 10}] + self.rank(rest, task, difficulty)
 
         scores = []
         for provider in providers:

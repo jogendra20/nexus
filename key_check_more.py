@@ -82,22 +82,15 @@ def _serper(env):
 
 def _youcom(env):
     k = os.getenv(env)
-    return _wrap(_http("youcom", env, k, "GET", "https://api.ydc-index.io/search",
-                       headers={"X-API-Key": k or ""}, params={"query": "test"}))
+    return _wrap(_http("youcom", env, k, "POST", "https://ydc-index.io/v1/search",
+                       headers={"X-API-Key": k or "", "Content-Type": "application/json"},
+                       json={"query": "test", "count": 1}))
 
 
 def _jina():
     k = os.getenv("JINA_API_KEY")
     return _wrap(_http("jina", "reader", k, "GET", "https://r.jina.ai/https://example.com",
                        headers={"Authorization": f"Bearer {k}"}))
-
-
-def _poe():
-    k = os.getenv("POE_API_KEY") or os.getenv("POE_TOKEN")
-    return _wrap(_http("poe", "claude-haiku-4.5", k, "POST", "https://api.poe.com/v1/chat/completions",
-                       headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
-                       json={"model": "claude-haiku-4.5", "max_tokens": 5,
-                             "messages": [{"role": "user", "content": "Reply OK"}]}))
 
 
 def _telegram():
@@ -161,40 +154,12 @@ def _supabase_write():
     return row
 
 
-def _via_class(provider, label, env_names, fn):
-    row = _row(provider, label)
-    key = next((os.getenv(e) for e in env_names if os.getenv(e)), None)
-    if not key:
-        row["status"] = "no_key"
-        return row
-    start = time.time()
-    try:
-        fn()
-        row["status"] = "ok"
-    except Exception as e:
-        row["status"] = "error"
-        row["error"] = _redact(f"{type(e).__name__}: {e}", key)
-    row["latency_ms"] = int((time.time() - start) * 1000)
-    return row
-
-
-def _perplexity():
-    from providers.perplexity import PerplexityProvider
-    return _via_class("perplexity", "session-cookie", ("PERPLEXITY_TOKEN",),
-                      lambda: PerplexityProvider().ask("Reply with OK"))
-
-
-def _drona():
-    from providers.drona import DronaProvider
-    return _via_class("drona", "search", ("DRONA_URL",), lambda: DronaProvider().ask("test"))
-
-
 def run_more():
     jobs = [
         lambda: _tavily("TAVILY_KEY_1"), lambda: _tavily("TAVILY_KEY_2"),
         lambda: _serper("SERPER_KEY_1"), lambda: _serper("SERPER_KEY_2"),
         lambda: _youcom("YOUCOM_KEY_1"), lambda: _youcom("YOUCOM_KEY_2"),
-        _jina, _poe, _telegram, _github, _supabase_read, _supabase_write, _perplexity, _drona,
+        _jina, _telegram, _github, _supabase_read, _supabase_write,
     ]
     with ThreadPoolExecutor(max_workers=8) as ex:
         futures = [ex.submit(j) for j in jobs]

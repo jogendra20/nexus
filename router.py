@@ -4,14 +4,11 @@ from config import TASK_KEYWORDS, TASK_ROUTES
 from logger import log_request
 from providers.gemini import GeminiProvider
 from providers.openrouter import OpenRouterProvider
-from providers.poe import PoeProvider
-from providers.perplexity import PerplexityProvider
 from providers.search import SearchProvider
 from providers.groq_provider import GroqProvider
 from providers.nvidia import NvidiaProvider
 from providers.cerebras import CerebrasProvider
 from providers.mistral import MistralProvider
-from providers.github_models import GitHubModelsProvider
 from providers.huggingface import HuggingFaceProvider
 from providers.jina import JinaProvider
 from scorer import update_score
@@ -26,14 +23,11 @@ class Router:
         self.providers = {
             "gemini":        GeminiProvider(),
             "openrouter":    OpenRouterProvider(),
-            "poe":           PoeProvider(),
-            "perplexity":    PerplexityProvider(),
             "search":        SearchProvider(),
             "groq":          GroqProvider(),
             "nvidia":        NvidiaProvider(),
             "cerebras":      CerebrasProvider(),
             "mistral":       MistralProvider(),
-            "github_models": GitHubModelsProvider(),
             "huggingface":   HuggingFaceProvider(),
             "jina":           JinaProvider(),
         }
@@ -92,7 +86,7 @@ Extract exactly what the user asked for. Be concise and structured. No markdown 
                 summary = self.providers["groq"].ask(summary_prompt, "default")
                 return {
                     "response": summary.get("response", result.get("results", "No results found")),
-                    "provider": "drona+groq",
+                    "provider": "search+groq",
                     "task": "search",
                     "sources": result.get("results", ""),
                 }

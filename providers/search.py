@@ -91,21 +91,21 @@ def _serper(key: str, query: str, max_results: int, freshness: str) -> list:
 
 # ── You.com ───────────────────────────────────────────────────────
 def _youcom(key: str, query: str, max_results: int) -> list:
-    r = requests.get(
-        "https://api.ydc-index.io/search",
-        params={"query": query, "num_web_results": max_results},
-        headers={"X-API-Key": key},
+    r = requests.post(
+        "https://ydc-index.io/v1/search",
+        json={"query": query, "count": max_results},
+        headers={"X-API-Key": key, "Content-Type": "application/json"},
         timeout=TIMEOUT,
     )
     r.raise_for_status()
     results = []
-    for item in r.json().get("hits", [])[:max_results]:
-        snippet = " ".join(item.get("snippets", []))[:300]
+    for item in (r.json().get("results", {}).get("web", []) or [])[:max_results]:
+        snippet = " ".join(item.get("snippets") or [item.get("description", "")])[:300]
         results.append({
             "title":          item.get("title", ""),
             "url":            item.get("url", ""),
             "snippet":        snippet,
-            "published_date": "",
+            "published_date": item.get("page_age", ""),
             "source":         _domain(item.get("url", "")),
         })
     return results

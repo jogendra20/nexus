@@ -13,9 +13,9 @@ TOOLS = {
 }
 
 DIFFICULTY_ROUTES = {
-    "easy":   ["cerebras", "groq"],
-    "medium": ["gemini", "nvidia"],
-    "hard":   ["github_models", "nvidia"],
+    "easy":   ["groq", "gemini"],
+    "medium": ["gemini", "groq", "mistral"],
+    "hard":   ["groq", "gemini", "openrouter"],
 }
 
 _router_ref = None
@@ -309,7 +309,7 @@ def _execute_tool(tool: str, tool_input: str, router, difficulty: str, agent_log
         elif tool == "deploy":
             return f"__DEPLOY__{tool_input}"
         elif tool == "ask":
-            providers = DIFFICULTY_ROUTES.get(difficulty, ["cerebras"])
+            providers = DIFFICULTY_ROUTES.get(difficulty, ["groq"])
             for p in providers:
                 if p in router.providers:
                     try:
