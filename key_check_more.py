@@ -161,6 +161,6 @@ def run_more():
         lambda: _youcom("YOUCOM_KEY_1"), lambda: _youcom("YOUCOM_KEY_2"),
         _jina, _telegram, _github, _supabase_read, _supabase_write,
     ]
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=16) as ex:
         futures = [ex.submit(j) for j in jobs]
         return [f.result() for f in futures]

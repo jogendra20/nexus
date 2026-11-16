@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
-TIMEOUT = 25
+TIMEOUT = 20
 
 TOOL = {
     "type": "function",
@@ -124,7 +124,7 @@ def check_one(target):
 
 def run_checks():
     targets = _targets()
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=16) as ex:
         results = list(ex.map(check_one, targets))
     return results
 
