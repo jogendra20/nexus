@@ -5,9 +5,9 @@ class MistralProvider:
     URL = "https://api.mistral.ai/v1/chat/completions"
 
     MODELS = {
-        "default": "mistral-small-latest",
+        "default": "codestral-latest",
         "coding":  "codestral-latest",
-        "fast":    "mistral-small-latest",
+        "fast":    "codestral-latest",
     }
 
     def ask(self, prompt: str, task: str = "default") -> str:

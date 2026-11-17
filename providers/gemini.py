@@ -4,8 +4,8 @@ from config import GEMINI_KEY
 
 class GeminiProvider:
     MODELS = [
-    "gemini-3.8-flash",
     "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
 ]
 
     def ask(self, prompt: str) -> str:
